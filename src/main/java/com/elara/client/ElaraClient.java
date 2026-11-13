@@ -57,8 +57,10 @@ public class ElaraClient implements ClientModInitializer {
 
             while (menuKey.wasPressed()) {
                 if (!AuthorGuard.isValid()) continue;
-                if (client.currentScreen == null) {
-                    client.setScreen(new ElaraMenuScreen(null));
+                // Mở được cả ở màn hình chính, không cần vào server
+                Screen cur = client.currentScreen;
+                if (cur == null || cur instanceof TitleScreen) {
+                    client.setScreen(new ElaraMenuScreen(cur));
                 }
             }
         });
