@@ -80,7 +80,7 @@ public class ElaraMenuScreen extends Screen {
             Feature f = items.get(i);
             int ry = rowY(i);
             ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT, false);
-            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, ElaraConfig.isOn(f));
+            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, ElaraConfig.isOn(f), f);
         }
 
         if (tab == Feature.Group.FIX_LAG) {

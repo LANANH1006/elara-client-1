@@ -1,19 +1,19 @@
 package com.elara.client.mixin;
 
 import com.elara.client.core.AuthorGuard;
+import com.elara.client.core.ElaraAssets;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Thay nền của mọi màn hình (menu, chat, options, multiplayer...) bằng title_bg.png.
- * Trong game (không có màn hình mở) thì không đổi gì.
+ * Thay nền của mọi màn hình (menu, chat, options, multiplayer...) bằng title_bg.png,
+ * ảnh này được nạp từ trong jar nên resource pack không đè được.
  */
 @Mixin(Screen.class)
 public abstract class ScreenMixin {
@@ -27,8 +27,8 @@ public abstract class ScreenMixin {
         int w = client.getWindow().getScaledWidth();
         int h = client.getWindow().getScaledHeight();
 
-        Identifier bg = Identifier.of("elaraclient", "textures/gui/title_bg.png");
-        ctx.drawTexture(RenderLayer::getGuiTextured, bg, 0, 0, 0f, 0f, w, h, w, h);
+        ElaraAssets.ensureLoaded();
+        ctx.drawTexture(RenderLayer::getGuiTextured, ElaraAssets.TITLE_BG, 0, 0, 0f, 0f, w, h, w, h);
         ctx.fill(0, 0, w, h, 0x88000000);
         ci.cancel();
     }
