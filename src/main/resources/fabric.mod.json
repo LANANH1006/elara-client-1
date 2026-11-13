@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "elaraclient",
+  "version": "${version}",
+  "name": "Elara Client",
+  "description": "Elara Client: tối ưu hiệu năng, giao diện kiểu iOS và tiện ích cho Minecraft Java.",
+  "authors": [
+    "Lan Anh"
+  ],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/elaraclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.elara.client.ElaraClient"
+    ]
+  },
+  "mixins": [
+    "elaraclient.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
