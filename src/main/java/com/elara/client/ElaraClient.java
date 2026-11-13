@@ -15,7 +15,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 public class ElaraClient implements ClientModInitializer {
@@ -36,7 +35,7 @@ public class ElaraClient implements ClientModInitializer {
                 "key.elaraclient.menu",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_RIGHT_SHIFT,
-                KeyBinding.Category.create(Identifier.of(MOD_ID, "main"))
+                "key.category.elaraclient.main"
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
