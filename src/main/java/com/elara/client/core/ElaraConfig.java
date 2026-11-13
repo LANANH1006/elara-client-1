@@ -26,6 +26,15 @@ public final class ElaraConfig {
         public String lang = "vi";
         public Map<String, Boolean> toggles = new LinkedHashMap<>();
         public LagFix.Backup lagBackup; // giá trị gốc của game trước khi Fix Lag can thiệp
+        public Map<String, Layout> layouts = new LinkedHashMap<>();
+    }
+
+    /** Vị trí, tỉ lệ và màu của một tính năng. Vị trí tính theo phần trăm màn hình. */
+    public static final class Layout {
+        public int xPct = 50;
+        public int yPct = 5;
+        public int scalePct = 100;
+        public int color = 0xFFFFFFFF;
     }
 
     private static Data data = new Data();
@@ -46,6 +55,11 @@ public final class ElaraConfig {
 
     public static void toggle(Feature f) {
         data.toggles.put(f.name(), !isOn(f));
+    }
+
+    public static Layout layout(Feature f) {
+        if (data.layouts == null) data.layouts = new LinkedHashMap<>();
+        return data.layouts.computeIfAbsent(f.name(), k -> new Layout());
     }
 
     public static LagFix.Backup backup() { return data.lagBackup; }

@@ -138,6 +138,16 @@ public class ElaraMenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        // Chuột phải vào một tính năng: mở bảng cài đặt riêng của nó
+        if (button == 1) {
+            List<Feature> rows = Feature.inGroup(tab);
+            for (int i = 0; i < rows.size(); i++) {
+                if (inside(mx, my, px + PAD, rowY(i), pw - PAD * 2, ROW_H)) {
+                    MinecraftClient.getInstance().setScreen(new FeatureSettingsScreen(this, rows.get(i)));
+                    return true;
+                }
+            }
+        }
         if (button != 0) return super.mouseClicked(mx, my, button);
 
         for (int i = 0; i < TABS.length; i++) {

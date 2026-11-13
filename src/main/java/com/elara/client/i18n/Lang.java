@@ -45,7 +45,12 @@ public final class Lang {
             e("ui.gc_done", "Đã giải phóng ", "Freed "),
             e("ui.gc_wait", "Chờ ", "Wait "),
             e("ui.tampered", "Tên tác giả đã bị sửa: tính năng Elara đã tắt",
-                    "Author name was changed: Elara features disabled")
+                    "Author name was changed: Elara features disabled"),
+
+            e("set.x", "Vị trí X", "X position"),
+            e("set.y", "Vị trí Y", "Y position"),
+            e("set.scale", "Tỉ lệ", "Scale"),
+            e("set.color", "Màu", "Color")
     );
 
     private Lang() {}
