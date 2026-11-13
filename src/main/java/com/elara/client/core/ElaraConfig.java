@@ -35,6 +35,18 @@ public final class ElaraConfig {
         public int yPct = 5;
         public int scalePct = 100;
         public int color = 0xFFFFFFFF;
+        /** Các thông số riêng của tính năng (kiểu, độ dài, ...) */
+        public Map<String, Integer> extra = new LinkedHashMap<>();
+
+        public int get(String key, int def) {
+            Integer v = extra == null ? null : extra.get(key);
+            return v == null ? def : v;
+        }
+
+        public void put(String key, int value) {
+            if (extra == null) extra = new LinkedHashMap<>();
+            extra.put(key, value);
+        }
     }
 
     private static Data data = new Data();
@@ -66,7 +78,7 @@ public final class ElaraConfig {
     private static Layout defaultLayout(Feature f) {
         Layout l = new Layout();
         switch (f) {
-            case KEYSTROKES -> { l.xPct = 1; l.yPct = 50; }
+            case KEYSTROKES -> { l.xPct = 1; l.yPct = 50; l.color = 0xFF0A84FF; }
             case SYSINFO -> { l.xPct = 1; l.yPct = 72; }
             case PIXEL_CROSSHAIR -> { l.xPct = 50; l.yPct = 50; }
             default -> { }

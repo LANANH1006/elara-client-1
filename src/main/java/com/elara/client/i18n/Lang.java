@@ -57,7 +57,15 @@ public final class Lang {
             e("set.x", "Vị trí X", "X position"),
             e("set.y", "Vị trí Y", "Y position"),
             e("set.scale", "Tỉ lệ", "Scale"),
-            e("set.color", "Màu", "Color")
+            e("set.color", "Màu", "Color"),
+            e("set.shape", "Kiểu", "Shape"),
+            e("set.length", "Độ dài", "Length"),
+            e("set.thickness", "Độ dày", "Thickness"),
+            e("set.gap", "Khe hở", "Gap"),
+            e("shape.plus", "Dấu cộng", "Plus"),
+            e("shape.dot", "Chấm tròn", "Dot"),
+            e("shape.x", "Chữ X", "X"),
+            e("shape.circle", "Vòng tròn", "Circle")
     );
 
     private Lang() {}

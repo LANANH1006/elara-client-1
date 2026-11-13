@@ -142,7 +142,8 @@ public class ElaraMenuScreen extends Screen {
         if (button == 1) {
             List<Feature> rows = Feature.inGroup(tab);
             for (int i = 0; i < rows.size(); i++) {
-                if (inside(mx, my, px + PAD, rowY(i), pw - PAD * 2, ROW_H)) {
+                if (inside(mx, my, px + PAD, rowY(i), pw - PAD * 2, ROW_H)
+                        && FeatureSettingsScreen.supports(rows.get(i))) {
                     MinecraftClient.getInstance().setScreen(new FeatureSettingsScreen(this, rows.get(i)));
                     return true;
                 }

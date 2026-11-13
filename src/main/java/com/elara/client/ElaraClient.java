@@ -5,6 +5,7 @@ import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.LagFix;
 import com.elara.client.hud.DynamicIslandHud;
+import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
 import com.elara.client.hud.KeyTracker;
 import com.elara.client.ui.ElaraMenuScreen;
@@ -72,6 +73,7 @@ public class ElaraClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
             DynamicIslandHud.render(context);
             ElementsHud.render(context);
+            CrosshairHud.render(context);
         });
     }
 }

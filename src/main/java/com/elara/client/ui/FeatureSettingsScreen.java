@@ -8,7 +8,10 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
-/** Bảng cài đặt riêng của một tính năng: vị trí, tỉ lệ, màu. Mở bằng chuột phải ở menu Elara. */
+import java.util.ArrayList;
+import java.util.List;
+
+/** Bảng cài đặt riêng của một tính năng, mở bằng chuột phải ở menu Elara. */
 public class FeatureSettingsScreen extends Screen {
     private static final int[] COLORS = {
             0xFFFFFFFF, 0xFF30D158, 0xFF0A84FF, 0xFFFF9F0A, 0xFFFF453A, 0xFFBF5AF2
@@ -19,8 +22,25 @@ public class FeatureSettingsScreen extends Screen {
     private static final int SWATCH = 18;
     private static final int SWATCH_START = 44;
 
+    /** Đọc một giá trị trong Layout */
+    public interface Getter {
+        int get(ElaraConfig.Layout l);
+    }
+
+    /** Ghi một giá trị trong Layout */
+    public interface Setter {
+        void set(ElaraConfig.Layout l, int v);
+    }
+
+    /**
+     * Một dòng cài đặt. Nếu {@code choices} khác null thì là danh sách chọn (bấm để đổi),
+     * ngược lại là thanh trượt từ {@code min} đến {@code max}.
+     */
+    public record Ctl(String label, String unit, int min, int max, Getter get, Setter set, String[] choices) {}
+
     private final Screen parent;
     private final Feature feature;
+    private final List<Ctl> rows;
     private int px;
     private int py;
     private int pw;
@@ -31,18 +51,55 @@ public class FeatureSettingsScreen extends Screen {
         super(Text.literal(feature.name()));
         this.parent = parent;
         this.feature = feature;
+        this.rows = rowsFor(feature);
+    }
+
+    /** Có bảng cài đặt cho tính năng này không */
+    public static boolean supports(Feature f) {
+        return hasPosition(f) || !extraControls(f).isEmpty();
+    }
+
+    /** Tính năng có vị trí trên màn hình (kéo được bằng thanh X, Y) */
+    private static boolean hasPosition(Feature f) {
+        return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
+    }
+
+    private static List<Ctl> rowsFor(Feature f) {
+        List<Ctl> list = new ArrayList<>();
+        if (hasPosition(f)) {
+            list.add(new Ctl(Lang.get("set.x"), "%", 0, 100, l -> l.xPct, (l, v) -> l.xPct = v, null));
+            list.add(new Ctl(Lang.get("set.y"), "%", 0, 100, l -> l.yPct, (l, v) -> l.yPct = v, null));
+            list.add(new Ctl(Lang.get("set.scale"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
+        }
+        list.addAll(extraControls(f));
+        return list;
+    }
+
+    /** Các dòng riêng của từng tính năng, lưu trong Layout.extra */
+    private static List<Ctl> extraControls(Feature f) {
+        List<Ctl> list = new ArrayList<>();
+        if (f == Feature.PIXEL_CROSSHAIR) {
+            String[] shapes = {
+                    Lang.get("shape.plus"), Lang.get("shape.dot"), Lang.get("shape.x"), Lang.get("shape.circle")
+            };
+            list.add(new Ctl(Lang.get("set.shape"), "", 0, shapes.length - 1,
+                    l -> l.get("shape", 0), (l, v) -> l.put("shape", v), shapes));
+            list.add(new Ctl(Lang.get("set.length"), "", 2, 20,
+                    l -> l.get("length", 6), (l, v) -> l.put("length", v), null));
+            list.add(new Ctl(Lang.get("set.thickness"), "", 1, 6,
+                    l -> l.get("thickness", 2), (l, v) -> l.put("thickness", v), null));
+            list.add(new Ctl(Lang.get("set.gap"), "", 0, 10,
+                    l -> l.get("gap", 3), (l, v) -> l.put("gap", v), null));
+        }
+        return list;
     }
 
     @Override
     protected void init() {
         pw = Math.min(width - 16, 300);
-        ph = TITLE_H + ROW_H * 4 + 16;
+        ph = TITLE_H + ROW_H * (rows.size() + 1) + 16;
         px = (width - pw) / 2;
-        py = (height - ph) / 2;
-    }
-
-    private ElaraConfig.Layout layout() {
-        return ElaraConfig.layout(feature);
+        py = Math.max(8, (height - ph) / 2);
     }
 
     private int rowY(int row) { return py + TITLE_H + row * ROW_H; }
@@ -58,14 +115,34 @@ public class FeatureSettingsScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         renderBackground(ctx, mouseX, mouseY, delta);
         IosStyle.glassPanel(ctx, px, py, pw, ph, 14);
-        ElaraConfig.Layout l = layout();
+        ElaraConfig.Layout l = ElaraConfig.layout(feature);
         ctx.drawText(textRenderer, Text.literal(feature.label()), px + PAD, py + 10, IosStyle.TEXT, false);
 
-        drawSlider(ctx, 0, Lang.get("set.x") + ": " + l.xPct + "%", fraction(l.xPct, 0, 100));
-        drawSlider(ctx, 1, Lang.get("set.y") + ": " + l.yPct + "%", fraction(l.yPct, 0, 100));
-        drawSlider(ctx, 2, Lang.get("set.scale") + ": " + l.scalePct + "%", fraction(l.scalePct, 50, 200));
+        for (int i = 0; i < rows.size(); i++) {
+            drawRow(ctx, i, rows.get(i), l);
+        }
+        drawColorRow(ctx, l);
+    }
 
-        int ry = rowY(3);
+    private void drawRow(DrawContext ctx, int row, Ctl c, ElaraConfig.Layout l) {
+        int ry = rowY(row);
+        int v = c.get().get(l);
+        if (c.choices() != null) {
+            int idx = Math.max(0, Math.min(c.choices().length - 1, v));
+            ctx.drawText(textRenderer, Text.literal(c.label() + ": " + c.choices()[idx] + "  >"),
+                    px + PAD, ry + 6, IosStyle.TEXT, false);
+            return;
+        }
+        ctx.drawText(textRenderer, Text.literal(c.label() + ": " + v + c.unit()),
+                px + PAD, ry + 1, IosStyle.TEXT, false);
+        int ty = ry + 14;
+        float frac = fraction(v, c.min(), c.max());
+        IosStyle.rounded(ctx, trackX(), ty, trackW(), 6, 3, IosStyle.GRAY);
+        IosStyle.rounded(ctx, trackX(), ty, Math.max(6, Math.round(trackW() * frac)), 6, 3, IosStyle.ACCENT);
+    }
+
+    private void drawColorRow(DrawContext ctx, ElaraConfig.Layout l) {
+        int ry = rowY(rows.size());
         int cy = ry + 4;
         ctx.drawText(textRenderer, Text.literal(Lang.get("set.color")), px + PAD, ry + 9, IosStyle.TEXT, false);
         for (int i = 0; i < COLORS.length; i++) {
@@ -77,30 +154,32 @@ public class FeatureSettingsScreen extends Screen {
         }
     }
 
-    private void drawSlider(DrawContext ctx, int row, String label, float frac) {
-        int ry = rowY(row);
-        ctx.drawText(textRenderer, Text.literal(label), px + PAD, ry + 1, IosStyle.TEXT, false);
-        int ty = ry + 14;
-        IosStyle.rounded(ctx, trackX(), ty, trackW(), 6, 3, IosStyle.GRAY);
-        IosStyle.rounded(ctx, trackX(), ty, Math.max(6, Math.round(trackW() * frac)), 6, 3, IosStyle.ACCENT);
-    }
-
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (button != 0) return super.mouseClicked(mx, my, button);
 
-        for (int i = 0; i < 3; i++) {
-            if (inside(mx, my, trackX() - 4, rowY(i) + 10, trackW() + 8, 14)) {
+        ElaraConfig.Layout l = ElaraConfig.layout(feature);
+        for (int i = 0; i < rows.size(); i++) {
+            Ctl c = rows.get(i);
+            int ry = rowY(i);
+            if (c.choices() != null) {
+                if (inside(mx, my, px + PAD - 4, ry, pw - PAD * 2 + 8, ROW_H - 4)) {
+                    int next = (c.get().get(l) + 1) % c.choices().length;
+                    c.set().set(l, next);
+                    ElaraConfig.save();
+                    return true;
+                }
+            } else if (inside(mx, my, trackX() - 4, ry + 10, trackW() + 8, 14)) {
                 dragging = i;
                 applySlider(i, mx);
                 return true;
             }
         }
 
-        int cy = rowY(3) + 4;
+        int cy = rowY(rows.size()) + 4;
         for (int i = 0; i < COLORS.length; i++) {
             if (inside(mx, my, swatchX(i) - 2, cy - 2, SWATCH + 4, SWATCH + 4)) {
-                layout().color = COLORS[i];
+                l.color = COLORS[i];
                 ElaraConfig.save();
                 return true;
             }
@@ -128,15 +207,10 @@ public class FeatureSettingsScreen extends Screen {
     }
 
     private void applySlider(int i, double mx) {
+        Ctl c = rows.get(i);
         float frac = (float) Math.max(0, Math.min(1, (mx - trackX()) / (double) trackW()));
-        ElaraConfig.Layout l = layout();
-        if (i == 0) {
-            l.xPct = Math.round(frac * 100);
-        } else if (i == 1) {
-            l.yPct = Math.round(frac * 100);
-        } else {
-            l.scalePct = 50 + Math.round(frac * 150);
-        }
+        int v = c.min() + Math.round(frac * (c.max() - c.min()));
+        c.set().set(ElaraConfig.layout(feature), v);
     }
 
     private static float fraction(int v, int min, int max) {

@@ -11,6 +11,7 @@
     "ButtonWidgetMixin",
     "ParticleAccessor",
     "ParticleManagerMixin",
-    "EntityRenderDispatcherMixin"
+    "EntityRenderDispatcherMixin",
+    "InGameHudMixin"
   ]
 }
