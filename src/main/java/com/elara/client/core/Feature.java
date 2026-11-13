@@ -25,7 +25,9 @@ public enum Feature {
     HIT_EFFECT(Group.CROSSHAIR),
 
     MUSIC_PLAYER(Group.MISC),
-    LYRICS_ISLAND(Group.MISC);
+    LYRICS_ISLAND(Group.MISC),
+    KEYSTROKES(Group.MISC),
+    SYSINFO(Group.MISC);
 
     public enum Group {
         FIX_LAG(2),

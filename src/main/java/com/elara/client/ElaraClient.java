@@ -5,6 +5,8 @@ import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.LagFix;
 import com.elara.client.hud.DynamicIslandHud;
+import com.elara.client.hud.ElementsHud;
+import com.elara.client.hud.KeyTracker;
 import com.elara.client.ui.ElaraMenuScreen;
 import com.elara.client.ui.IosSplashScreen;
 import net.fabricmc.api.ClientModInitializer;
@@ -40,6 +42,7 @@ public class ElaraClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             CullingManager.tick();
+            KeyTracker.tick(client);
 
             // Áp dụng Fix Lag một lần khi game khởi động
             if (!lagSynced) {
@@ -66,6 +69,9 @@ public class ElaraClient implements ClientModInitializer {
         });
 
         // Dynamic Island luôn vẽ trên đầu màn hình
-        HudRenderCallback.EVENT.register((context, tickCounter) -> DynamicIslandHud.render(context));
+        HudRenderCallback.EVENT.register((context, tickCounter) -> {
+            DynamicIslandHud.render(context);
+            ElementsHud.render(context);
+        });
     }
 }

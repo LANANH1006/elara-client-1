@@ -59,7 +59,19 @@ public final class ElaraConfig {
 
     public static Layout layout(Feature f) {
         if (data.layouts == null) data.layouts = new LinkedHashMap<>();
-        return data.layouts.computeIfAbsent(f.name(), k -> new Layout());
+        return data.layouts.computeIfAbsent(f.name(), k -> defaultLayout(f));
+    }
+
+    /** Vị trí mặc định của từng HUD, để các HUD không chồng lên nhau */
+    private static Layout defaultLayout(Feature f) {
+        Layout l = new Layout();
+        switch (f) {
+            case KEYSTROKES -> { l.xPct = 1; l.yPct = 50; }
+            case SYSINFO -> { l.xPct = 1; l.yPct = 72; }
+            case PIXEL_CROSSHAIR -> { l.xPct = 50; l.yPct = 50; }
+            default -> { }
+        }
+        return l;
     }
 
     public static LagFix.Backup backup() { return data.lagBackup; }

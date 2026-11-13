@@ -41,7 +41,7 @@ public class ElaraMenuScreen extends Screen {
     @Override
     protected void init() {
         pw = Math.min(width - 16, 340);
-        ph = Math.min(height - 16, 240);
+        ph = Math.min(height - 16, 280);
         px = (width - pw) / 2;
         py = (height - ph) / 2;
     }

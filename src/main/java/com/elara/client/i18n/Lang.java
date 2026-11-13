@@ -30,6 +30,13 @@ public final class Lang {
             e("feature.hit_effect", "Hiệu ứng đánh trúng", "Hit effect"),
             e("feature.music_player", "Trình phát nhạc", "Music player"),
             e("feature.lyrics_island", "Lời bài hát trên đảo", "Lyrics on the island"),
+            e("feature.keystrokes", "Hiển thị phím", "Keystrokes"),
+            e("feature.sysinfo", "Thông số hệ thống", "System info"),
+            e("sys.fps", "FPS", "FPS"),
+            e("sys.ping", "Ping", "Ping"),
+            e("sys.pos", "Tọa độ", "Position"),
+            e("sys.facing", "Hướng", "Facing"),
+            e("sys.armor", "Giáp", "Armor"),
 
             e("ui.language", "Ngôn ngữ", "Language"),
             e("ui.island_editor", "Kéo thả Dynamic Island", "Drag Dynamic Island"),

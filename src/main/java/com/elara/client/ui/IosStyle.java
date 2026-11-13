@@ -75,7 +75,7 @@ public final class IosStyle {
     }
 
     /** Tiến độ 0..1 của công tắc, đi dần về trạng thái đích theo thời gian thực */
-    private static float progress(Object key, boolean on) {
+    public static float progress(Object key, boolean on) {
         long now = System.nanoTime();
         float target = on ? 1f : 0f;
         Anim a = ANIMS.computeIfAbsent(key, k -> new Anim(target, now));
