@@ -2,6 +2,7 @@ package com.elara.client.ui;
 
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import com.elara.client.core.LagFix;
 import com.elara.client.i18n.Lang;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -56,11 +57,16 @@ public class FeatureSettingsScreen extends Screen {
 
     /** Có bảng cài đặt cho tính năng này không */
     public static boolean supports(Feature f) {
-        return hasPosition(f) || !extraControls(f).isEmpty();
+        return hasPosition(f) || hasColor(f) || !extraControls(f).isEmpty();
     }
 
     /** Tính năng có vị trí trên màn hình (kéo được bằng thanh X, Y) */
     private static boolean hasPosition(Feature f) {
+        return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
+    }
+
+    /** Tính năng có màu để chọn */
+    private static boolean hasColor(Feature f) {
         return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
     }
 
@@ -78,26 +84,40 @@ public class FeatureSettingsScreen extends Screen {
     /** Các dòng riêng của từng tính năng, lưu trong Layout.extra */
     private static List<Ctl> extraControls(Feature f) {
         List<Ctl> list = new ArrayList<>();
-        if (f == Feature.PIXEL_CROSSHAIR) {
-            String[] shapes = {
-                    Lang.get("shape.plus"), Lang.get("shape.dot"), Lang.get("shape.x"), Lang.get("shape.circle")
-            };
-            list.add(new Ctl(Lang.get("set.shape"), "", 0, shapes.length - 1,
-                    l -> l.get("shape", 0), (l, v) -> l.put("shape", v), shapes));
-            list.add(new Ctl(Lang.get("set.length"), "", 2, 20,
-                    l -> l.get("length", 6), (l, v) -> l.put("length", v), null));
-            list.add(new Ctl(Lang.get("set.thickness"), "", 1, 6,
-                    l -> l.get("thickness", 2), (l, v) -> l.put("thickness", v), null));
-            list.add(new Ctl(Lang.get("set.gap"), "", 0, 10,
-                    l -> l.get("gap", 3), (l, v) -> l.put("gap", v), null));
+        switch (f) {
+            case PIXEL_CROSSHAIR -> {
+                String[] shapes = {
+                        Lang.get("shape.plus"), Lang.get("shape.dot"), Lang.get("shape.x"), Lang.get("shape.circle")
+                };
+                list.add(new Ctl(Lang.get("set.shape"), "", 0, shapes.length - 1,
+                        l -> l.get("shape", 0), (l, v) -> l.put("shape", v), shapes));
+                list.add(slider(Lang.get("set.length"), "", 2, 20, "length", 6));
+                list.add(slider(Lang.get("set.thickness"), "", 1, 6, "thickness", 2));
+                list.add(slider(Lang.get("set.gap"), "", 0, 10, "gap", 3));
+            }
+            case LAG_RENDER -> list.add(slider(Lang.get("set.view_cap"), "", 2, 16, "viewCap", 12));
+            case LAG_GPU_SAVER -> {
+                list.add(slider(Lang.get("set.view_cap"), "", 2, 16, "viewCap", 8));
+                list.add(slider(Lang.get("set.fps_cap"), "", 15, 120, "fpsCap", 60));
+            }
+            case LAG_ENTITIES -> list.add(slider(Lang.get("set.entity_pct"), "%", 50, 100, "pct", 50));
+            case LAG_BIOME -> list.add(slider(Lang.get("set.biome_radius"), "", 0, 7, "radius", 0));
+            case LAG_MIPMAP -> list.add(slider(Lang.get("set.mipmap"), "", 0, 4, "levels", 0));
+            case LAG_FOCUS_FPS -> list.add(slider(Lang.get("set.focus_fps"), "", 10, 60, "fps", 10));
+            default -> { }
         }
         return list;
+    }
+
+    /** Thanh trượt lưu vào Layout.extra với khóa và giá trị mặc định */
+    private static Ctl slider(String label, String unit, int min, int max, String key, int def) {
+        return new Ctl(label, unit, min, max, l -> l.get(key, def), (l, v) -> l.put(key, v), null);
     }
 
     @Override
     protected void init() {
         pw = Math.min(width - 16, 300);
-        ph = TITLE_H + ROW_H * (rows.size() + 1) + 16;
+        ph = TITLE_H + ROW_H * (rows.size() + (hasColor(feature) ? 1 : 0)) + 16;
         px = (width - pw) / 2;
         py = Math.max(8, (height - ph) / 2);
     }
@@ -121,7 +141,7 @@ public class FeatureSettingsScreen extends Screen {
         for (int i = 0; i < rows.size(); i++) {
             drawRow(ctx, i, rows.get(i), l);
         }
-        drawColorRow(ctx, l);
+        if (hasColor(feature)) drawColorRow(ctx, l);
     }
 
     private void drawRow(DrawContext ctx, int row, Ctl c, ElaraConfig.Layout l) {
@@ -176,12 +196,14 @@ public class FeatureSettingsScreen extends Screen {
             }
         }
 
-        int cy = rowY(rows.size()) + 4;
-        for (int i = 0; i < COLORS.length; i++) {
-            if (inside(mx, my, swatchX(i) - 2, cy - 2, SWATCH + 4, SWATCH + 4)) {
-                l.color = COLORS[i];
-                ElaraConfig.save();
-                return true;
+        if (hasColor(feature)) {
+            int cy = rowY(rows.size()) + 4;
+            for (int i = 0; i < COLORS.length; i++) {
+                if (inside(mx, my, swatchX(i) - 2, cy - 2, SWATCH + 4, SWATCH + 4)) {
+                    l.color = COLORS[i];
+                    ElaraConfig.save();
+                    return true;
+                }
             }
         }
         return super.mouseClicked(mx, my, button);
@@ -224,6 +246,8 @@ public class FeatureSettingsScreen extends Screen {
     @Override
     public void close() {
         ElaraConfig.save();
-        MinecraftClient.getInstance().setScreen(parent);
+        MinecraftClient client = MinecraftClient.getInstance();
+        LagFix.sync(client);
+        client.setScreen(parent);
     }
 }

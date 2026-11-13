@@ -65,7 +65,17 @@ public final class Lang {
             e("shape.plus", "Dấu cộng", "Plus"),
             e("shape.dot", "Chấm tròn", "Dot"),
             e("shape.x", "Chữ X", "X"),
-            e("shape.circle", "Vòng tròn", "Circle")
+            e("shape.circle", "Vòng tròn", "Circle"),
+            e("feature.lag_clouds", "Tắt mây", "Disable clouds"),
+            e("feature.lag_biome", "Giảm Biome Blend", "Reduce biome blend"),
+            e("feature.lag_mipmap", "Giảm Mipmap", "Reduce mipmap"),
+            e("feature.lag_focus_fps", "Giới hạn FPS khi không focus", "Limit FPS when unfocused"),
+            e("set.view_cap", "Khoảng cách tối đa", "Max view distance"),
+            e("set.fps_cap", "Giới hạn FPS", "FPS cap"),
+            e("set.entity_pct", "Khoảng cách thực thể", "Entity distance"),
+            e("set.biome_radius", "Bán kính Biome Blend", "Biome blend radius"),
+            e("set.mipmap", "Mức Mipmap", "Mipmap level"),
+            e("set.focus_fps", "FPS khi không focus", "FPS when unfocused")
     );
 
     private Lang() {}

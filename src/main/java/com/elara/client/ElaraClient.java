@@ -27,6 +27,7 @@ public class ElaraClient implements ClientModInitializer {
     private static KeyBinding menuKey;
     private static boolean splashDone = false;
     private static boolean lagSynced = false;
+    private static boolean lastFocused = true;
 
     @Override
     public void onInitializeClient() {
@@ -44,6 +45,13 @@ public class ElaraClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             CullingManager.tick();
             KeyTracker.tick(client);
+
+            // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
+            boolean focused = client.isWindowFocused();
+            if (focused != lastFocused) {
+                lastFocused = focused;
+                LagFix.sync(client);
+            }
 
             // Áp dụng Fix Lag một lần khi game khởi động
             if (!lagSynced) {

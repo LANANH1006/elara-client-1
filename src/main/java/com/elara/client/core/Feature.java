@@ -12,6 +12,10 @@ public enum Feature {
     LAG_ENTITIES(Group.FIX_LAG),
     LAG_PARTICLES(Group.FIX_LAG),
     LAG_GPU_SAVER(Group.FIX_LAG),
+    LAG_CLOUDS(Group.FIX_LAG),
+    LAG_BIOME(Group.FIX_LAG),
+    LAG_MIPMAP(Group.FIX_LAG),
+    LAG_FOCUS_FPS(Group.FIX_LAG),
 
     RAIN_3D(Group.EFFECTS),
     VIRTUAL_WINGS(Group.EFFECTS),
