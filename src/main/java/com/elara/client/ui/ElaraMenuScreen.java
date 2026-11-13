@@ -62,7 +62,7 @@ public class ElaraMenuScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, width, height, 0x66000000);
+        renderBackground(ctx, mouseX, mouseY, delta);
         IosStyle.glassPanel(ctx, px, py, pw, ph, 16);
 
         for (int i = 0; i < TABS.length; i++) {
