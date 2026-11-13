@@ -3,7 +3,6 @@ package com.elara.client.core;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.option.GraphicsMode;
-import net.minecraft.client.option.ParticlesMode;
 
 /**
  * Fix Lag: chỉnh các tùy chọn có sẵn của game theo những tính năng đang bật.
@@ -29,6 +28,17 @@ public final class LagFix {
     private static final double ENTITY_DISTANCE_LOW = 0.5;
 
     private LagFix() {}
+
+    /**
+     * Lấy hằng enum có tên {@code name}, cùng kiểu với {@code current}.
+     * Không cần import tên kiểu enum của Minecraft, nên không phụ thuộc vào tên package của Yarn.
+     */
+    private static <E extends Enum<E>> E pick(E current, String name) {
+        for (E e : current.getDeclaringClass().getEnumConstants()) {
+            if (e.name().equals(name)) return e;
+        }
+        return current;
+    }
 
     public static boolean anyEnabled() {
         for (Feature f : Feature.inGroup(Feature.Group.FIX_LAG)) {
@@ -81,9 +91,8 @@ public final class LagFix {
         int fps = gpu ? Math.min(b.maxFps, GPU_FPS_CAP) : b.maxFps;
         o.getMaxFps().setValue(fps);
 
-        o.getParticles().setValue(particles
-                ? ParticlesMode.MINIMAL
-                : ParticlesMode.valueOf(b.particles));
+        var particlesOpt = o.getParticles();
+        particlesOpt.setValue(pick(particlesOpt.getValue(), particles ? "MINIMAL" : b.particles));
 
         o.getEntityShadows().setValue(entities ? Boolean.FALSE : b.entityShadows);
         o.getEntityDistanceScaling().setValue(entities ? ENTITY_DISTANCE_LOW : b.entityDistance);
@@ -99,7 +108,8 @@ public final class LagFix {
 
         o.getViewDistance().setValue(b.viewDistance);
         o.getMaxFps().setValue(b.maxFps);
-        o.getParticles().setValue(ParticlesMode.valueOf(b.particles));
+        var particlesOpt = o.getParticles();
+        particlesOpt.setValue(pick(particlesOpt.getValue(), b.particles));
         o.getEntityShadows().setValue(b.entityShadows);
         o.getEntityDistanceScaling().setValue(b.entityDistance);
         o.getGraphicsMode().setValue(GraphicsMode.valueOf(b.graphics));
