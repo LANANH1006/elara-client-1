@@ -64,7 +64,15 @@ public class FeatureSettingsScreen extends Screen {
 
     /** Tính năng có màu để chọn bằng bảng màu */
     private static boolean hasColor(Feature f) {
-        return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
+        return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR
+                || f == Feature.JUMP_RING || f == Feature.VIRTUAL_WINGS;
+    }
+
+    /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
+    private static Ctl visibilityCtl() {
+        String[] modes = {Lang.get("vis.self"), Lang.get("vis.nearby"), Lang.get("vis.third")};
+        return new Ctl(Lang.get("set.vis"), "", 0, modes.length - 1,
+                l -> l.get("vis", 0), (l, v) -> l.put("vis", v), modes);
     }
 
     private static List<Ctl> rowsFor(Feature f) {
@@ -101,6 +109,24 @@ public class FeatureSettingsScreen extends Screen {
             case LAG_BIOME -> list.add(slider(Lang.get("set.biome_radius"), "", 0, 7, "radius", 0));
             case LAG_MIPMAP -> list.add(slider(Lang.get("set.mipmap"), "", 0, 4, "levels", 0));
             case LAG_FOCUS_FPS -> list.add(slider(Lang.get("set.focus_fps"), "", 10, 60, "fps", 10));
+            case JUMP_RING -> {
+                String[] styles = {Lang.get("ring.wave"), Lang.get("ring.double"), Lang.get("ring.magic")};
+                list.add(new Ctl(Lang.get("set.ring_style"), "", 0, styles.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
+                list.add(slider(Lang.get("set.speed"), "", 1, 10, "speed", 5));
+                list.add(visibilityCtl());
+            }
+            case VIRTUAL_WINGS -> {
+                String[] styles = {
+                        Lang.get("wing.angel"), Lang.get("wing.dragon"),
+                        Lang.get("wing.butterfly"), Lang.get("wing.cyber")
+                };
+                list.add(new Ctl(Lang.get("set.wing_style"), "", 0, styles.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
+                list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
+                list.add(slider(Lang.get("set.flap"), "", 1, 10, "speed", 5));
+                list.add(visibilityCtl());
+            }
             default -> { }
         }
         return list;

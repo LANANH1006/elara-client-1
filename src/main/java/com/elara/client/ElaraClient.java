@@ -7,6 +7,8 @@ import com.elara.client.core.LagFix;
 import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
+import com.elara.client.fx.Effects;
+import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
 import com.elara.client.ui.ElaraMenuScreen;
 import com.elara.client.ui.IosSplashScreen;
@@ -14,6 +16,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.option.KeyBinding;
@@ -45,6 +48,7 @@ public class ElaraClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             CullingManager.tick();
             KeyTracker.tick(client);
+            PlayerTracker.tick(client);
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
             boolean focused = client.isWindowFocused();
@@ -83,5 +87,8 @@ public class ElaraClient implements ClientModInitializer {
             ElementsHud.render(context);
             CrosshairHud.render(context);
         });
+
+        // Hiệu ứng trong thế giới: vòng nhảy và cánh ảo
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(Effects::render);
     }
 }
