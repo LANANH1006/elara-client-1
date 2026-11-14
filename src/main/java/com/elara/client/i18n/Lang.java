@@ -78,7 +78,13 @@ public final class Lang {
             e("set.focus_fps", "FPS khi không focus", "FPS when unfocused"),
             e("set.open_picker", "Bảng màu >", "Color picker >"),
             e("picker.title", "Bảng màu", "Color picker"),
-            e("picker.chroma", "Chroma (màu cầu vồng chạy)", "Chroma (rainbow cycle)")
+            e("picker.chroma", "Chroma (màu cầu vồng chạy)", "Chroma (rainbow cycle)"),
+            e("ui.soon", "Sắp có", "Coming soon"),
+            e("pack.reload", "Tải lại gói", "Reload packs"),
+            e("pack.empty", "Không có gói nào trong resourcepacks", "No packs in resourcepacks"),
+            e("pack.up", "Lên", "Up"),
+            e("pack.down", "Xuống", "Down"),
+            e("pack.hint", "Đổi xong bấm Tải lại để áp dụng", "Press Reload to apply changes")
     );
 
     private Lang() {}

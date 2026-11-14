@@ -6,23 +6,33 @@ import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.LagFix;
 import com.elara.client.core.MemoryTools;
+import com.elara.client.core.PackManager;
 import com.elara.client.i18n.Lang;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /** Menu kính mờ với 6 tab */
 public class ElaraMenuScreen extends Screen {
-    /** Phase đã có code thật. Tab có phase lớn hơn số này sẽ hiện dòng "Hoàn thiện ở Phase". */
-    public static final int BUILT_PHASE = 2;
-
     private static final Feature.Group[] TABS = Feature.Group.values();
+    /**
+     * Tính năng chưa có code thật. Công tắc bị khóa và ghi "Sắp có",
+     * không cho bật/tắt để tránh nút rỗng. Xóa khỏi tập này khi làm xong.
+     */
+    private static final Set<Feature> UNBUILT = EnumSet.of(
+            Feature.RAIN_3D, Feature.VIRTUAL_WINGS, Feature.JUMP_RING, Feature.HEAD_ACCESSORY,
+            Feature.KNIFE_ANIM, Feature.PVP_REACH, Feature.HIT_EFFECT,
+            Feature.MUSIC_PLAYER, Feature.LYRICS_ISLAND
+    );
     private static final int PAD = 10;
     private static final int TAB_H = 18;
     private static final int ROW_H = 24;
+    private static final int PACK_VISIBLE = 6;
 
     private final Screen parent;
     private Feature.Group tab = Feature.Group.FIX_LAG;
@@ -32,6 +42,7 @@ public class ElaraMenuScreen extends Screen {
     private int ph;
     private int draggingSlider = -1;
     private String gcMessage = null;
+    private int packScroll = 0;
 
     public ElaraMenuScreen(Screen parent) {
         super(Text.literal("Elara Client"));
@@ -41,7 +52,7 @@ public class ElaraMenuScreen extends Screen {
     @Override
     protected void init() {
         pw = Math.min(width - 16, 340);
-        ph = Math.min(height - 16, 280);
+        ph = Math.min(height - 16, 300);
         px = (width - pw) / 2;
         py = (height - ph) / 2;
     }
@@ -55,8 +66,14 @@ public class ElaraMenuScreen extends Screen {
 
     private int rowY(int index) { return py + 40 + index * ROW_H; }
     private int toggleX() { return px + pw - PAD - 30; }
+    private int downX() { return toggleX() - 6 - 44; }
+    private int upX() { return downX() - 4 - 36; }
     private int trackX() { return px + PAD; }
     private int trackW() { return pw - PAD * 2; }
+
+    private static boolean isBuilt(Feature f) {
+        return !UNBUILT.contains(f);
+    }
 
     // ---------- vẽ ----------
 
@@ -75,12 +92,34 @@ public class ElaraMenuScreen extends Screen {
                     active ? IosStyle.TEXT : IosStyle.TEXT_DIM);
         }
 
+        if (tab == Feature.Group.PACK) {
+            drawPacks(ctx);
+        } else {
+            drawFeatureRows(ctx);
+        }
+
+        if (!AuthorGuard.isValid()) {
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("ui.tampered")),
+                    px + pw / 2, py + ph - 40, 0xFFFF5555);
+        }
+        ctx.drawCenteredTextWithShadow(textRenderer,
+                Text.literal("Elara Client · " + ElaraClient.AUTHOR),
+                px + pw / 2, py + ph - 12, IosStyle.TEXT_DIM);
+    }
+
+    private void drawFeatureRows(DrawContext ctx) {
         List<Feature> items = Feature.inGroup(tab);
         for (int i = 0; i < items.size(); i++) {
             Feature f = items.get(i);
             int ry = rowY(i);
-            ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT, false);
-            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, ElaraConfig.isOn(f), f);
+            if (isBuilt(f)) {
+                ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT, false);
+                IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, ElaraConfig.isOn(f), f);
+            } else {
+                ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT_DIM, false);
+                ctx.drawText(textRenderer, Text.literal(Lang.get("ui.soon")), toggleX() + 2, ry + 4,
+                        IosStyle.TEXT_DIM, false);
+            }
         }
 
         if (tab == Feature.Group.FIX_LAG) {
@@ -103,18 +142,45 @@ public class ElaraMenuScreen extends Screen {
             drawButton(ctx, n + 3, Lang.get("ui.island_editor"));
         }
 
-        if (tab.phase > BUILT_PHASE) {
-            ctx.drawText(textRenderer, Text.literal(Lang.get("ui.pending") + tab.phase),
-                    px + PAD, py + ph - 28, IosStyle.TEXT_DIM, false);
-        }
+    }
 
-        if (!AuthorGuard.isValid()) {
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("ui.tampered")),
-                    px + pw / 2, py + ph - 40, 0xFFFF5555);
+    /** Tab Gói tài nguyên: danh sách gói thật từ thư mục resourcepacks */
+    private void drawPacks(DrawContext ctx) {
+        List<PackManager.Entry> entries = PackManager.list(MinecraftClient.getInstance());
+        if (entries.isEmpty()) {
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("pack.empty")),
+                    px + pw / 2, rowY(0) + 4, IosStyle.TEXT_DIM);
         }
-        ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("Elara Client · " + ElaraClient.AUTHOR),
-                px + pw / 2, py + ph - 14, IosStyle.TEXT_DIM);
+        packScroll = Math.max(0, Math.min(packScroll, entries.size() - PACK_VISIBLE));
+        for (int i = 0; i < PACK_VISIBLE && packScroll + i < entries.size(); i++) {
+            PackManager.Entry e = entries.get(packScroll + i);
+            int ry = rowY(i);
+            ctx.drawText(textRenderer, Text.literal(trim(e.title(), 140)), px + PAD, ry + 4,
+                    e.enabled() ? IosStyle.TEXT : IosStyle.TEXT_DIM, false);
+            if (e.enabled()) {
+                drawMiniButton(ctx, upX(), ry + 3, 36, Lang.get("pack.up"));
+                drawMiniButton(ctx, downX(), ry + 3, 44, Lang.get("pack.down"));
+            }
+            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, e.enabled(), "pack:" + e.name());
+        }
+        drawButton(ctx, PACK_VISIBLE, Lang.get("pack.reload"));
+        ctx.drawText(textRenderer, Text.literal(Lang.get("pack.hint")),
+                px + PAD, rowY(PACK_VISIBLE + 1) + 4, IosStyle.TEXT_DIM, false);
+    }
+
+    private static String trim(String s, int maxPx) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.textRenderer.getWidth(s) <= maxPx) return s;
+        String out = s;
+        while (out.length() > 1 && client.textRenderer.getWidth(out + "..") > maxPx) {
+            out = out.substring(0, out.length() - 1);
+        }
+        return out + "..";
+    }
+
+    private void drawMiniButton(DrawContext ctx, int x, int y, int w, String text) {
+        IosStyle.rounded(ctx, x, y, w, 18, 9, IosStyle.TILE);
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(text), x + w / 2, y + 5, IosStyle.TEXT);
     }
 
     private void drawSlider(DrawContext ctx, int row, String label, int value, int min, int max) {
@@ -158,9 +224,13 @@ public class ElaraMenuScreen extends Screen {
             }
         }
 
+        if (tab == Feature.Group.PACK) {
+            return clickPacks(mx, my) || super.mouseClicked(mx, my, button);
+        }
+
         List<Feature> items = Feature.inGroup(tab);
         for (int i = 0; i < items.size(); i++) {
-            if (inside(mx, my, toggleX() - 6, rowY(i), 42, ROW_H)) {
+            if (isBuilt(items.get(i)) && inside(mx, my, toggleX() - 6, rowY(i), 42, ROW_H)) {
                 ElaraConfig.toggle(items.get(i));
                 ElaraConfig.save();
                 LagFix.sync(MinecraftClient.getInstance());
@@ -199,6 +269,42 @@ public class ElaraMenuScreen extends Screen {
             }
         }
         return super.mouseClicked(mx, my, button);
+    }
+
+    /** Bấm trong tab Gói: bật/tắt, lên/xuống, hoặc tải lại */
+    private boolean clickPacks(double mx, double my) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        List<PackManager.Entry> entries = PackManager.list(client);
+        for (int i = 0; i < PACK_VISIBLE && packScroll + i < entries.size(); i++) {
+            PackManager.Entry e = entries.get(packScroll + i);
+            int ry = rowY(i);
+            if (inside(mx, my, toggleX() - 6, ry, 42, ROW_H)) {
+                PackManager.setEnabled(client, e.name(), !e.enabled());
+                return true;
+            }
+            if (e.enabled() && inside(mx, my, upX(), ry + 3, 36, 18)) {
+                PackManager.move(client, e.name(), -1);
+                return true;
+            }
+            if (e.enabled() && inside(mx, my, downX(), ry + 3, 44, 18)) {
+                PackManager.move(client, e.name(), 1);
+                return true;
+            }
+        }
+        if (inside(mx, my, px + PAD, rowY(PACK_VISIBLE), pw - PAD * 2, 18)) {
+            PackManager.reload(client);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double horizontalAmount, double verticalAmount) {
+        if (tab == Feature.Group.PACK) {
+            packScroll -= (int) Math.signum(verticalAmount);
+            return true;
+        }
+        return super.mouseScrolled(mx, my, horizontalAmount, verticalAmount);
     }
 
     @Override
