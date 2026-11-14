@@ -27,6 +27,8 @@ public final class ElaraConfig {
         public Map<String, Boolean> toggles = new LinkedHashMap<>();
         public LagFix.Backup lagBackup; // giá trị gốc của game trước khi Fix Lag can thiệp
         public Map<String, Layout> layouts = new LinkedHashMap<>();
+        public int themeAccent = 0xFF0A84FF; // màu chủ đạo của menu (ARGB)
+        public int hudVersion = 0;           // 2 = đã áp dụng vị trí HUD mặc định mới
     }
 
     /** Vị trí, tỉ lệ và màu của một tính năng. Vị trí tính theo phần trăm màn hình. */
@@ -61,6 +63,17 @@ public final class ElaraConfig {
     public static void setIslandOffsetY(int v) { data.islandOffsetY = clamp(v, 0, 2000); }
     public static void setIslandX(int v) { data.islandX = clamp(v, -1, 4000); }
 
+    /** Màu chủ đạo của menu: nút gạt, tab đang chọn, thanh trượt */
+    public static int themeAccent() { return data.themeAccent; }
+
+    public static void setThemeAccent(int argb) { data.themeAccent = argb | 0xFF000000; }
+
+    /** Đưa một tính năng về vị trí, tỉ lệ, màu mặc định (giữ nguyên bật/tắt) */
+    public static void resetLayout(Feature f) {
+        if (data.layouts == null) data.layouts = new LinkedHashMap<>();
+        data.layouts.put(f.name(), defaultLayout(f));
+    }
+
     public static boolean isOn(Feature f) {
         return data.toggles.getOrDefault(f.name(), false);
     }
@@ -89,8 +102,9 @@ public final class ElaraConfig {
     private static Layout defaultLayout(Feature f) {
         Layout l = new Layout();
         switch (f) {
-            case KEYSTROKES -> { l.xPct = 1; l.yPct = 50; l.color = 0xFF0A84FF; }
-            case SYSINFO -> { l.xPct = 1; l.yPct = 72; }
+            // Góc trên trái, không đè khung chat (chat nằm ở góc dưới bên trái)
+            case KEYSTROKES -> { l.xPct = 1; l.yPct = 2; l.color = 0xFF0A84FF; }
+            case SYSINFO -> { l.xPct = 1; l.yPct = 30; }
             case PIXEL_CROSSHAIR -> { l.xPct = 50; l.yPct = 50; }
             case RAIN_3D -> l.color = 0xFF9FD8FF;
             default -> { }
@@ -112,6 +126,14 @@ public final class ElaraConfig {
             }
         }
         Lang.setCode(data.lang);
+        if (data.hudVersion < 2) {
+            // Bản cũ đặt HUD ở giữa trái và đè lên chat: chuyển sang vị trí mới
+            if (data.layouts != null) {
+                data.layouts.remove(Feature.KEYSTROKES.name());
+                data.layouts.remove(Feature.SYSINFO.name());
+            }
+            data.hudVersion = 2;
+        }
     }
 
     public static void save() {

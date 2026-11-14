@@ -1,5 +1,6 @@
 package com.elara.client.ui;
 
+import com.elara.client.core.ElaraConfig;
 import net.minecraft.client.gui.DrawContext;
 
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.Map;
  */
 public final class IosStyle {
     public static final int GLASS = 0x9E3A3A3C;       // kính xám, alpha khoảng 0.62
+    public static final int GLASS_TOP = 0xB0505055;   // tint sáng hơn ở mép trên kính
     public static final int GLASS_EDGE = 0x66FFFFFF;  // viền sáng 1px
     public static final int TILE = 0x40FFFFFF;        // nền tab đang chọn
     public static final int ACCENT = 0xFF0A84FF;      // xanh dương iOS
@@ -48,14 +50,98 @@ public final class IosStyle {
             }
             int x1 = x + inset;
             int x2 = x + w - inset;
-            if (x2 > x1) ctx.fill(x1, y + row, x2, y + row + 1, color);
+            if (x2 > x1) ctx.fill(x1, y + row, x2, y + row + 1, fadeColor(color));
         }
     }
 
-    /** Khung kính: viền sáng 1px bên ngoài, nền xám bán trong suốt bên trong */
+    /** Hình bo góc có màu chuyển dọc từ {@code top} xuống {@code bottom} */
+    private static void roundedGradient(DrawContext ctx, int x, int y, int w, int h, int radius, int top, int bottom) {
+        int r = Math.min(radius, Math.min(w, h) / 2);
+        for (int row = 0; row < h; row++) {
+            double cy = row + 0.5;
+            double dist = Math.min(cy, h - cy);
+            int inset = 0;
+            if (dist < r) {
+                inset = (int) Math.round(r - Math.sqrt((double) r * r - (r - dist) * (r - dist)));
+            }
+            int x1 = x + inset;
+            int x2 = x + w - inset;
+            if (x2 <= x1) continue;
+            int c = lerpColor(top, bottom, row / (float) Math.max(1, h - 1));
+            ctx.fill(x1, y + row, x2, y + row + 1, fadeColor(c));
+        }
+    }
+
+    /**
+     * Kính iOS. Không làm mờ nền thật (cần shader riêng), nên dùng: viền sáng 1px
+     * sáng ở cạnh trên và mờ dần ở cạnh dưới, thân kính trong suốt có tint sáng phía trên.
+     */
+    public static void glass(DrawContext ctx, int x, int y, int w, int h, int radius) {
+        roundedGradient(ctx, x - 1, y - 1, w + 2, h + 2, radius + 1, 0xC8FFFFFF, 0x26FFFFFF);
+        roundedGradient(ctx, x, y, w, h, radius, GLASS_TOP, GLASS);
+    }
+
+    /** Khung kính lớn (menu, bảng cài đặt) */
     public static void glassPanel(DrawContext ctx, int x, int y, int w, int h, int radius) {
-        rounded(ctx, x - 1, y - 1, w + 2, h + 2, radius + 1, GLASS_EDGE);
-        rounded(ctx, x, y, w, h, radius, GLASS);
+        glass(ctx, x, y, w, h, radius);
+    }
+
+    /** Màu chủ đạo của menu, người chơi đổi trong tab Tiện ích */
+    public static int accent() {
+        return ElaraConfig.themeAccent();
+    }
+
+    // ---------- hoạt ảnh mở/đóng menu ----------
+
+    private static final long OPEN_MS = 220L;
+    private static final long CLOSE_MS = 160L;
+    private static long openAt = System.nanoTime();
+    private static long closeAt = 0L;
+    /** Độ mờ hiện tại áp cho mọi hình vẽ, 1 là đậm nguyên bản */
+    private static float fade = 1f;
+
+    /** Gọi khi mở menu: bắt đầu phóng to nhẹ và hiện dần */
+    public static void beginOpen() {
+        openAt = System.nanoTime();
+        closeAt = 0L;
+    }
+
+    /** Gọi khi bấm đóng: menu sẽ mờ dần trước khi thật sự thoát */
+    public static void beginClose() {
+        if (closeAt == 0L) closeAt = System.nanoTime();
+    }
+
+    public static boolean isClosing() {
+        return closeAt != 0L;
+    }
+
+    /** Hoạt ảnh đóng đã chạy xong, lúc này mới đổi sang màn hình trước */
+    public static boolean closeDone() {
+        return closeAt != 0L && (System.nanoTime() - closeAt) / 1_000_000L >= CLOSE_MS;
+    }
+
+    /** Tiến độ 0..1 của hoạt ảnh (mở: easeOutCubic; đóng: đi từ 1 về 0) */
+    public static float openFactor() {
+        long now = System.nanoTime();
+        if (closeAt != 0L) {
+            float t = Math.min(1f, (now - closeAt) / 1_000_000f / CLOSE_MS);
+            return 1f - t * t;
+        }
+        float t = Math.min(1f, (now - openAt) / 1_000_000f / OPEN_MS);
+        float inv = 1f - t;
+        return 1f - inv * inv * inv;
+    }
+
+    /** Đặt độ mờ cho các hình vẽ sau đó. Nhớ đặt lại 1f khi vẽ xong. */
+    public static void setFade(float f) {
+        fade = Math.max(0f, Math.min(1f, f));
+    }
+
+    /** Áp độ mờ hiện tại vào alpha của một màu ARGB */
+    public static int fadeColor(int c) {
+        if (fade >= 0.999f) return c;
+        int a = Math.round(((c >>> 24) & 0xFF) * fade);
+        return (a << 24) | (c & 0x00FFFFFF);
     }
 
     /** Công tắc kiểu iPhone, dùng vị trí làm khóa animation */
@@ -65,10 +151,13 @@ public final class IosStyle {
 
     /** Công tắc kiểu iPhone có trượt mượt khi bật/tắt. {@code key} phân biệt từng công tắc. */
     public static void toggleSwitch(DrawContext ctx, int x, int y, boolean on, Object key) {
+        toggleSwitch(ctx, x, y, on, key, 30, 16);
+    }
+
+    /** Công tắc có kích thước tùy chọn, mặc định 30x16 */
+    public static void toggleSwitch(DrawContext ctx, int x, int y, boolean on, Object key, int w, int h) {
         float p = progress(key, on);
-        int w = 30;
-        int h = 16;
-        rounded(ctx, x, y, w, h, h / 2, lerpColor(GRAY, GREEN, p));
+        rounded(ctx, x, y, w, h, h / 2, lerpColor(GRAY, accent(), p));
         int knob = h - 4;
         int kx = Math.round(x + 2 + (w - knob - 4) * p);
         rounded(ctx, kx, y + 2, knob, knob, knob / 2, 0xFFFFFFFF);

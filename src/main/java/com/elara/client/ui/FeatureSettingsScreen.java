@@ -11,14 +11,20 @@ import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-/** Bảng cài đặt riêng của một tính năng, mở bằng chuột phải ở menu Elara. */
+/**
+ * Bảng cài đặt riêng của một tính năng: hộp kính ở giữa màn hình, có khung xem trước,
+ * thanh trượt, danh sách chọn, bảng màu và nút Đặt lại mặc định.
+ * Mở bằng nút sliders trên thẻ hoặc chuột phải.
+ */
 public class FeatureSettingsScreen extends Screen {
-    private static final int PAD = 12;
-    private static final int ROW_H = 26;
-    private static final int TITLE_H = 30;
-    private static final int SWATCH = 18;
-    private static final int COLOR_X = 56;
+    private static final int PAD = 14;
+    private static final int ROW_H = 30;
+    private static final int HEAD_H = 34;
+    private static final int PREVIEW_H = 56;
+    private static final int FOOT_H = 30;
+    private static final int DRAG_SLOP = 4;
 
     /** Đọc một giá trị trong Layout */
     public interface Getter {
@@ -43,18 +49,21 @@ public class FeatureSettingsScreen extends Screen {
     private int py;
     private int pw;
     private int ph;
+    private int viewH;
+    private int scroll = 0;
+    private double scrollAcc = 0;
     private int dragging = -1;
+    private boolean pressing = false;
+    private boolean dragged = false;
+    private double pressX;
+    private double pressY;
 
     public FeatureSettingsScreen(Screen parent, Feature feature) {
         super(Text.literal(feature.name()));
         this.parent = parent;
         this.feature = feature;
         this.rows = rowsFor(feature);
-    }
-
-    /** Có bảng cài đặt cho tính năng này không */
-    public static boolean supports(Feature f) {
-        return hasPosition(f) || hasColor(f) || !extraControls(f).isEmpty();
+        IosStyle.beginOpen();
     }
 
     /** Tính năng có vị trí trên màn hình (kéo được bằng thanh X, Y) */
@@ -168,29 +177,115 @@ public class FeatureSettingsScreen extends Screen {
         return new Ctl(label, unit, min, max, l -> l.get(key, def), (l, v) -> l.put(key, v), null);
     }
 
+    // ---------- bố cục ----------
+
     @Override
     protected void init() {
-        pw = Math.min(width - 16, 300);
-        ph = TITLE_H + ROW_H * (rows.size() + (hasColor(feature) ? 1 : 0)) + 16;
+        pw = Math.min(width - 20, 300);
+        int fixed = HEAD_H + PREVIEW_H + 8 + FOOT_H + 8;
+        int room = Math.max(60, height - 16 - fixed);
+        viewH = Math.min(contentHeight(), room);
+        ph = fixed + viewH;
         px = (width - pw) / 2;
         py = Math.max(8, (height - ph) / 2);
     }
 
-    private int rowY(int row) { return py + TITLE_H + row * ROW_H; }
+    private int itemCount() {
+        return rows.size() + (hasColor(feature) ? 1 : 0);
+    }
+
+    private int contentHeight() {
+        return Math.max(1, itemCount()) * ROW_H;
+    }
+
+    private int contentTop() { return py + HEAD_H + PREVIEW_H + 8; }
+    private int rowY(int i) { return contentTop() - scroll + i * ROW_H; }
     private int trackX() { return px + PAD; }
     private int trackW() { return pw - PAD * 2; }
+    private int closeX() { return px + pw - PAD - 18; }
+    private int resetY() { return py + ph - FOOT_H + 5; }
+    private boolean inContent(double my) { return my >= contentTop() && my < contentTop() + viewH; }
+
+    private int clampScroll(int v) {
+        return Math.max(0, Math.min(v, Math.max(0, contentHeight() - viewH)));
+    }
+
+    // ---------- vẽ ----------
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         renderBackground(ctx, mouseX, mouseY, delta);
-        IosStyle.glassPanel(ctx, px, py, pw, ph, 14);
-        ElaraConfig.Layout l = ElaraConfig.layout(feature);
-        ctx.drawText(textRenderer, Text.literal(feature.label()), px + PAD, py + 10, IosStyle.TEXT, false);
+        float open = IosStyle.openFactor();
+        float s = 0.92f + 0.08f * open;
+        float cx = px + pw / 2f;
+        float cy = py + ph / 2f;
+        IosStyle.setFade(open);
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(cx, cy, 0f);
+        ctx.getMatrices().scale(s, s, 1f);
+        ctx.getMatrices().translate(-cx, -cy, 0f);
+        try {
+            drawModal(ctx);
+        } finally {
+            ctx.getMatrices().pop();
+            IosStyle.setFade(1f);
+        }
+    }
 
+    private void drawModal(DrawContext ctx) {
+        ElaraConfig.Layout l = ElaraConfig.layout(feature);
+        boolean on = ElaraConfig.isOn(feature);
+        IosStyle.glassPanel(ctx, px, py, pw, ph, 20);
+
+        // đầu: icon, tên, nút đóng
+        IosStyle.rounded(ctx, px + PAD, py + 9, 18, 18, 6,
+                IosStyle.fadeColor(on ? IosStyle.accent() : IosStyle.GRAY));
+        String letter = feature.label().isEmpty() ? "?" : feature.label().substring(0, 1).toUpperCase(Locale.ROOT);
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(letter),
+                px + PAD + 9, py + 14, IosStyle.fadeColor(IosStyle.TEXT));
+        ctx.drawText(textRenderer, Text.literal(trim(feature.label(), closeX() - (px + PAD + 26) - 6)),
+                px + PAD + 26, py + 14, IosStyle.fadeColor(IosStyle.TEXT), false);
+        IosStyle.rounded(ctx, closeX(), py + 9, 18, 18, 9, IosStyle.fadeColor(IosStyle.TILE));
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("X"),
+                closeX() + 9, py + 14, IosStyle.fadeColor(IosStyle.TEXT));
+
+        // khung xem trước: màu hiện tại (kể cả Chroma) và quầng sáng
+        int prY = py + HEAD_H;
+        IosStyle.rounded(ctx, px + PAD, prY, pw - PAD * 2, PREVIEW_H - 6, 12, IosStyle.fadeColor(0x66000000));
+        ctx.drawText(textRenderer, Text.literal(Lang.get("ui.preview")), px + PAD + 8, prY + 6,
+                IosStyle.fadeColor(IosStyle.TEXT_DIM), false);
+        int sample = ElaraConfig.color(feature);
+        int sx = px + pw / 2 - 14;
+        int sy = prY + 14;
+        IosStyle.rounded(ctx, sx - 4, sy - 4, 36, 28, 10, IosStyle.fadeColor(IosStyle.withAlpha(sample, 0.25f)));
+        IosStyle.rounded(ctx, sx, sy, 28, 20, 8, IosStyle.fadeColor(sample));
+
+        // nội dung: cắt theo vùng xem, cuộn được
+        ctx.enableScissor(px, contentTop(), px + pw, contentTop() + viewH);
+        if (itemCount() == 0) {
+            ctx.drawText(textRenderer, Text.literal(Lang.get("ui.no_options")), px + PAD, contentTop() + 8,
+                    IosStyle.fadeColor(IosStyle.TEXT_DIM), false);
+        }
         for (int i = 0; i < rows.size(); i++) {
             drawRow(ctx, i, rows.get(i), l);
         }
-        if (hasColor(feature)) drawColorRow(ctx);
+        if (hasColor(feature)) drawColorRow(ctx, rows.size());
+        ctx.disableScissor();
+        drawScrollbar(ctx);
+
+        // chân: đặt lại mặc định
+        IosStyle.rounded(ctx, px + PAD, resetY(), pw - PAD * 2, 20, 10, IosStyle.fadeColor(IosStyle.TILE));
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("ui.reset_defaults")),
+                px + pw / 2, resetY() + 6, IosStyle.fadeColor(IosStyle.TEXT));
+    }
+
+    private void drawScrollbar(DrawContext ctx) {
+        int total = contentHeight();
+        if (total <= viewH) return;
+        int thumbH = Math.max(14, viewH * viewH / total);
+        int thumbY = contentTop() + (viewH - thumbH) * scroll / (total - viewH);
+        IosStyle.rounded(ctx, px + pw - 6, thumbY, 3, thumbH, 1,
+                IosStyle.fadeColor(IosStyle.withAlpha(IosStyle.accent(), 0.8f)));
     }
 
     private void drawRow(DrawContext ctx, int row, Ctl c, ElaraConfig.Layout l) {
@@ -198,63 +293,96 @@ public class FeatureSettingsScreen extends Screen {
         int v = c.get().get(l);
         if (c.choices() != null) {
             int idx = Math.max(0, Math.min(c.choices().length - 1, v));
-            ctx.drawText(textRenderer, Text.literal(c.label() + ": " + c.choices()[idx] + "  >"),
-                    px + PAD, ry + 6, IosStyle.TEXT, false);
+            ctx.drawText(textRenderer, Text.literal(trim(c.label() + ": " + c.choices()[idx] + "  >", trackW())),
+                    px + PAD, ry + 9, IosStyle.fadeColor(IosStyle.TEXT), false);
             return;
         }
-        ctx.drawText(textRenderer, Text.literal(c.label() + ": " + v + c.unit()),
-                px + PAD, ry + 1, IosStyle.TEXT, false);
-        int ty = ry + 14;
+        ctx.drawText(textRenderer, Text.literal(trim(c.label() + ": " + v + c.unit(), trackW())),
+                px + PAD, ry + 2, IosStyle.fadeColor(IosStyle.TEXT), false);
         float frac = fraction(v, c.min(), c.max());
-        IosStyle.rounded(ctx, trackX(), ty, trackW(), 6, 3, IosStyle.GRAY);
-        IosStyle.rounded(ctx, trackX(), ty, Math.max(6, Math.round(trackW() * frac)), 6, 3, IosStyle.ACCENT);
+        IosStyle.rounded(ctx, trackX(), ry + 16, trackW(), 6, 3, IosStyle.fadeColor(IosStyle.GRAY));
+        IosStyle.rounded(ctx, trackX(), ry + 16, Math.max(6, Math.round(trackW() * frac)), 6, 3,
+                IosStyle.fadeColor(IosStyle.accent()));
     }
 
-    /** Dòng màu: ô xem trước màu hiện tại và nút mở bảng màu */
-    private void drawColorRow(DrawContext ctx) {
-        int ry = rowY(rows.size());
-        ctx.drawText(textRenderer, Text.literal(Lang.get("set.color")), px + PAD, ry + 6, IosStyle.TEXT, false);
-        IosStyle.rounded(ctx, px + COLOR_X, ry + 4, SWATCH, SWATCH, 4, ElaraConfig.color(feature));
-        ctx.drawText(textRenderer, Text.literal(Lang.get("set.open_picker")),
-                px + COLOR_X + SWATCH + 8, ry + 6, IosStyle.ACCENT, false);
+    /** Dòng màu: nhãn, rồi ô xem màu hiện tại ở bên phải */
+    private void drawColorRow(DrawContext ctx, int row) {
+        int ry = rowY(row);
+        ctx.drawText(textRenderer, Text.literal(Lang.get("set.color") + "  >  " + Lang.get("set.open_picker")),
+                px + PAD, ry + 9, IosStyle.fadeColor(IosStyle.TEXT), false);
+        IosStyle.rounded(ctx, px + pw - PAD - 18, ry + 6, 18, 18, 6,
+                IosStyle.fadeColor(ElaraConfig.color(feature)));
     }
+
+    // ---------- tương tác ----------
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (button != 0) return super.mouseClicked(mx, my, button);
+        if (inside(mx, my, closeX(), py + 9, 18, 18)) {
+            close();
+            return true;
+        }
+        if (inside(mx, my, px + PAD, resetY(), pw - PAD * 2, 20)) {
+            ElaraConfig.resetLayout(feature);
+            ElaraConfig.save();
+            scroll = 0;
+            return true;
+        }
+        if (!inContent(my)) return super.mouseClicked(mx, my, button);
 
-        ElaraConfig.Layout l = ElaraConfig.layout(feature);
         for (int i = 0; i < rows.size(); i++) {
             Ctl c = rows.get(i);
-            int ry = rowY(i);
-            if (c.choices() != null) {
-                if (inside(mx, my, px + PAD - 4, ry, pw - PAD * 2 + 8, ROW_H - 4)) {
-                    int next = (c.get().get(l) + 1) % c.choices().length;
-                    c.set().set(l, next);
-                    ElaraConfig.save();
-                    return true;
-                }
-            } else if (inside(mx, my, trackX() - 4, ry + 10, trackW() + 8, 14)) {
+            if (c.choices() == null && inside(mx, my, px + PAD - 4, rowY(i) + 10, trackW() + 8, 16)) {
                 dragging = i;
                 applySlider(i, mx);
                 return true;
             }
         }
+        pressing = true;
+        dragged = false;
+        pressX = mx;
+        pressY = my;
+        return true;
+    }
 
-        if (hasColor(feature)) {
-            int ry = rowY(rows.size());
-            if (inside(mx, my, px + PAD - 4, ry, pw - PAD * 2 + 8, ROW_H - 4)) {
-                MinecraftClient.getInstance().setScreen(new ColorPickerScreen(this, feature));
-                return true;
+    /** Thả chuột mà không kéo đi xa thì coi là một lần chạm */
+    private void tap(double mx, double my) {
+        ElaraConfig.Layout l = ElaraConfig.layout(feature);
+        for (int i = 0; i < rows.size(); i++) {
+            Ctl c = rows.get(i);
+            if (c.choices() != null && inside(mx, my, px + PAD - 4, rowY(i), trackW() + 8, ROW_H - 2)) {
+                int next = (c.get().get(l) + 1) % c.choices().length;
+                c.set().set(l, next);
+                ElaraConfig.save();
+                return;
             }
         }
-        return super.mouseClicked(mx, my, button);
+        if (hasColor(feature) && inside(mx, my, px + PAD - 4, rowY(rows.size()), trackW() + 8, ROW_H - 2)) {
+            MinecraftClient.getInstance().setScreen(new ColorPickerScreen(this, feature));
+        }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double horizontalAmount, double verticalAmount) {
+        scroll = clampScroll(scroll - (int) Math.round(verticalAmount * 14));
+        return true;
     }
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
         if (dragging >= 0) {
             applySlider(dragging, mx);
+            return true;
+        }
+        if (pressing && button == 0) {
+            if (Math.abs(my - pressY) > DRAG_SLOP) dragged = true;
+            if (dragged) {
+                scrollAcc += dy;
+                int step = (int) scrollAcc;
+                scrollAcc -= step;
+                scroll = clampScroll(scroll - step);
+            }
             return true;
         }
         return super.mouseDragged(mx, my, button, dx, dy);
@@ -265,6 +393,13 @@ public class FeatureSettingsScreen extends Screen {
         if (dragging >= 0) {
             dragging = -1;
             ElaraConfig.save();
+            return true;
+        }
+        if (pressing && button == 0) {
+            pressing = false;
+            if (!dragged) tap(pressX, pressY);
+            dragged = false;
+            scrollAcc = 0;
             return true;
         }
         return super.mouseReleased(mx, my, button);
@@ -279,6 +414,15 @@ public class FeatureSettingsScreen extends Screen {
 
     private static float fraction(int v, int min, int max) {
         return Math.max(0f, Math.min(1f, (v - min) / (float) (max - min)));
+    }
+
+    private String trim(String s, int maxPx) {
+        if (textRenderer.getWidth(s) <= maxPx) return s;
+        String out = s;
+        while (out.length() > 1 && textRenderer.getWidth(out + "..") > maxPx) {
+            out = out.substring(0, out.length() - 1);
+        }
+        return out + "..";
     }
 
     private static boolean inside(double mx, double my, int x, int y, int w, int h) {
