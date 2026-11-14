@@ -26,6 +26,9 @@ public enum Feature {
     JUMP_RING(Group.EFFECTS),
     HEAD_ACCESSORY(Group.EFFECTS),
     FOOTSTEP_AURA(Group.EFFECTS),
+    CAPE(Group.EFFECTS),
+    BODY_GLOW(Group.EFFECTS),
+    RIBBON_TRAIL(Group.EFFECTS),
 
     KNIFE_ANIM(Group.KNIVES),
     SWORD_TRAIL(Group.KNIVES),

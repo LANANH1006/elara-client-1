@@ -76,7 +76,8 @@ public class FeatureSettingsScreen extends Screen {
         return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR
                 || f == Feature.JUMP_RING || f == Feature.VIRTUAL_WINGS
                 || f == Feature.HEAD_ACCESSORY || f == Feature.FOOTSTEP_AURA || f == Feature.SWORD_TRAIL
-                || f == Feature.PVP_REACH || f == Feature.HIT_EFFECT || f == Feature.RAIN_3D;
+                || f == Feature.PVP_REACH || f == Feature.HIT_EFFECT || f == Feature.RAIN_3D
+                || f == Feature.CAPE || f == Feature.BODY_GLOW || f == Feature.RIBBON_TRAIL;
     }
 
     /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
@@ -140,6 +141,9 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(visibilityCtl());
             }
             case HEAD_ACCESSORY -> {
+                String[] halos = {Lang.get("halo.ring"), Lang.get("halo.wave")};
+                list.add(new Ctl(Lang.get("set.style"), "", 0, halos.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), halos));
                 list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
                 list.add(visibilityCtl());
             }
@@ -162,6 +166,22 @@ public class FeatureSettingsScreen extends Screen {
                         l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
             }
             case LAG_BLOCK_ENTITIES -> list.add(slider(Lang.get("set.block_dist"), "", 8, 64, "dist", 24));
+            case CAPE -> {
+                String[] capes = {Lang.get("cape.sakura"), Lang.get("cape.glass"), Lang.get("cape.neon")};
+                list.add(new Ctl(Lang.get("set.style"), "", 0, capes.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), capes));
+                list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
+                list.add(visibilityCtl());
+            }
+            case BODY_GLOW -> {
+                list.add(slider(Lang.get("set.glow_thick"), "", 2, 40, "thick", 10));
+                list.add(visibilityCtl());
+            }
+            case RIBBON_TRAIL -> {
+                list.add(slider(Lang.get("set.trail_len"), "", 4, 24, "len", 16));
+                list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
+                list.add(visibilityCtl());
+            }
             case KNIFE_ANIM -> {
                 list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));
                 list.add(slider(Lang.get("set.hand_y"), "", -50, 50, "hy", 0));

@@ -38,6 +38,8 @@ public final class PlayerMotion {
         public boolean moving;
         public boolean airborne;
         public double vy;
+        /** Độ nghiêng của vạt áo: 0 đứng yên, khoảng 1 khi chạy nhanh */
+        public float lean;
         /** Vị trí chân gần nhất ở đầu deque, cũ nhất ở cuối */
         public final Deque<double[]> trail = new ArrayDeque<>();
         int idle;
@@ -77,6 +79,11 @@ public final class PlayerMotion {
             s.hidden = p.getEquippedStack(EquipmentSlot.CHEST).isOf(Items.ELYTRA);
             s.airborne = !p.isOnGround();
             s.vy = p.getVelocity().y;
+
+            // Vạt áo nghiêng theo tốc độ ngang (blocks mỗi tick), nhảy thì thêm một chút
+            float leanTarget = (float) Math.min(1.0, Math.hypot(dx, dz) * 4.0) + (s.airborne ? 0.2f : 0f);
+            leanTarget = Math.min(1f, leanTarget);
+            s.lean += (leanTarget - s.lean) * (leanTarget > s.lean ? 0.3f : 0.12f);
 
             boolean resting = !s.airborne && !s.moving && (s.idle >= IDLE_TICKS || s.sneak >= SNEAK_TICKS);
             float spreadTarget;

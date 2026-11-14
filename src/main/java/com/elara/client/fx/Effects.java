@@ -10,6 +10,9 @@ import org.joml.Matrix4f;
 /** Điểm vào vẽ hiệu ứng trong thế giới. Mỗi tính năng bật thì vẽ một lượt riêng. */
 public final class Effects {
 
+    /** Hiệu ứng đã lỗi một lần thì tắt tới khi khởi động lại, để không báo lỗi mỗi khung hình */
+    private static final java.util.Set<Feature> BROKEN = java.util.EnumSet.noneOf(Feature.class);
+
     private Effects() {}
 
     public static void render(WorldRenderContext ctx) {
@@ -34,7 +37,7 @@ public final class Effects {
         if (ElaraConfig.isOn(Feature.HEAD_ACCESSORY)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
             Halo.draw(b, client, ElaraConfig.layout(Feature.HEAD_ACCESSORY),
-                    ElaraConfig.color(Feature.HEAD_ACCESSORY), a);
+                    ElaraConfig.color(Feature.HEAD_ACCESSORY), a, new WorldBatch.V(cam.x, cam.y, cam.z));
             b.flush();
         }
         if (ElaraConfig.isOn(Feature.SWORD_TRAIL)) {
@@ -63,6 +66,39 @@ public final class Effects {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
             Wings.draw(b, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
                     ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
+            b.flush();
+        }
+        if (ElaraConfig.isOn(Feature.CAPE) && !BROKEN.contains(Feature.CAPE)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
+            try {
+                Cape.draw(b, client, ElaraConfig.layout(Feature.CAPE), ElaraConfig.color(Feature.CAPE), a);
+            } catch (RuntimeException ex) {
+                // Lỗi trong một hiệu ứng không được làm sập game. Tắt riêng hiệu ứng này và báo một lần.
+                System.err.println("[Elara] Tắt Áo choàng do lỗi: " + ex);
+                BROKEN.add(Feature.CAPE);
+            }
+            b.flush();
+        }
+        if (ElaraConfig.isOn(Feature.BODY_GLOW) && !BROKEN.contains(Feature.BODY_GLOW)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
+            try {
+                BodyGlow.draw(b, client, ElaraConfig.layout(Feature.BODY_GLOW),
+                        ElaraConfig.color(Feature.BODY_GLOW), a);
+            } catch (RuntimeException ex) {
+                System.err.println("[Elara] Tắt Viền sáng thân do lỗi: " + ex);
+                BROKEN.add(Feature.BODY_GLOW);
+            }
+            b.flush();
+        }
+        if (ElaraConfig.isOn(Feature.RIBBON_TRAIL) && !BROKEN.contains(Feature.RIBBON_TRAIL)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
+            try {
+                RibbonTrail.draw(b, client, ElaraConfig.layout(Feature.RIBBON_TRAIL),
+                        ElaraConfig.color(Feature.RIBBON_TRAIL), a, new WorldBatch.V(cam.x, cam.y, cam.z));
+            } catch (RuntimeException ex) {
+                System.err.println("[Elara] Tắt Dải lụa sau lưng do lỗi: " + ex);
+                BROKEN.add(Feature.RIBBON_TRAIL);
+            }
             b.flush();
         }
         if (ElaraConfig.isOn(Feature.BUILD_GUIDE)) {

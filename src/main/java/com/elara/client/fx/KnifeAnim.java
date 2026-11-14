@@ -42,6 +42,13 @@ public final class KnifeAnim {
         lastSwap = swap;
     }
 
+    /** Bấm phím Inspect: xoay vũ khí đang cầm một vòng. Chỉ có tác dụng khi bật tính năng Dao. */
+    public static void inspect(MinecraftClient client) {
+        if (client.player != null && isWeapon(client.player.getMainHandStack())) {
+            spinStart = System.currentTimeMillis();
+        }
+    }
+
     public static boolean isWeapon(ItemStack stack) {
         Item item = stack.getItem();
         return item instanceof SwordItem || item instanceof AxeItem;

@@ -44,6 +44,7 @@ public class ElaraClient implements ClientModInitializer {
     public static final String AUTHOR = "Lan Anh";
 
     private static KeyBinding menuKey;
+    private static KeyBinding inspectKey;
     private static boolean splashDone = false;
     private static boolean lagSynced = false;
     private static boolean lastFocused = true;
@@ -61,6 +62,14 @@ public class ElaraClient implements ClientModInitializer {
                 "key.category.elaraclient.main"
         ));
 
+        // Phím Inspect (G): xoay vũ khí đang cầm, khi bật tính năng Dao
+        inspectKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.elaraclient.inspect",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G,
+                "key.category.elaraclient.main"
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             CullingManager.tick();
             KeyTracker.tick(client);
@@ -68,6 +77,7 @@ public class ElaraClient implements ClientModInitializer {
             PlayerMotion.tick(client);
             BuildGuide.tick(client);
             KnifeAnim.tick(client);
+            while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
             HitFx.tick();
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
