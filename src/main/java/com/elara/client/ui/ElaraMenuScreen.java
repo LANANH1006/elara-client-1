@@ -26,8 +26,7 @@ public class ElaraMenuScreen extends Screen {
      */
     private static final Set<Feature> UNBUILT = EnumSet.of(
             Feature.RAIN_3D,
-            Feature.KNIFE_ANIM, Feature.PVP_REACH, Feature.HIT_EFFECT,
-            Feature.MUSIC_PLAYER, Feature.LYRICS_ISLAND
+            Feature.KNIFE_ANIM, Feature.PVP_REACH, Feature.HIT_EFFECT
     );
     private static final int PAD = 10;
     private static final int TAB_H = 18;
@@ -140,6 +139,7 @@ public class ElaraMenuScreen extends Screen {
             String langName = Lang.current() == Lang.Language.VI ? "Tiếng Việt" : "English";
             drawButton(ctx, n + 2, Lang.get("ui.language") + ": " + langName);
             drawButton(ctx, n + 3, Lang.get("ui.island_editor"));
+            drawButton(ctx, n + 4, Lang.get("music.open"));
         }
 
     }
@@ -265,6 +265,10 @@ public class ElaraMenuScreen extends Screen {
             }
             if (inside(mx, my, px + PAD, rowY(n + 3), pw - PAD * 2, 18)) {
                 MinecraftClient.getInstance().setScreen(new IslandEditorScreen(this));
+                return true;
+            }
+            if (inside(mx, my, px + PAD, rowY(n + 4), pw - PAD * 2, 18)) {
+                MinecraftClient.getInstance().setScreen(new MusicScreen(this));
                 return true;
             }
         }

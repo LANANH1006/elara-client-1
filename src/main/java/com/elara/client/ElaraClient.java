@@ -3,7 +3,10 @@ package com.elara.client;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
 import com.elara.client.core.LagFix;
+import com.elara.client.hud.LyricsHud;
+import com.elara.client.music.MusicPlayer;
 import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
@@ -49,6 +52,7 @@ public class ElaraClient implements ClientModInitializer {
             CullingManager.tick();
             KeyTracker.tick(client);
             PlayerTracker.tick(client);
+            MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
             boolean focused = client.isWindowFocused();
@@ -86,6 +90,7 @@ public class ElaraClient implements ClientModInitializer {
             DynamicIslandHud.render(context);
             ElementsHud.render(context);
             CrosshairHud.render(context);
+            LyricsHud.render(context);
         });
 
         // Hiệu ứng trong thế giới: vòng nhảy và cánh ảo
