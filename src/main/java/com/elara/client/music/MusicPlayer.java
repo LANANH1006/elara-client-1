@@ -2,9 +2,12 @@ package com.elara.client.music;
 
 import net.fabricmc.loader.api.FabricLoader;
 
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -19,8 +22,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Trình phát nhạc đọc file .wav trong thư mục elara/music (cạnh mods).
- * Lời bài hát đọc từ file .lrc cùng tên. mp3/ogg cần thêm bộ giải mã nên chưa hỗ trợ.
+ * Trình phát nhạc đọc file .wav, .mp3, .ogg trong thư mục elara/music (cạnh mods).
+ * mp3 và ogg được giải mã bằng mp3spi và vorbisspi đóng gói sẵn trong jar.
+ * Lời bài hát đọc từ file .lrc cùng tên.
  */
 public final class MusicPlayer {
 
@@ -52,7 +56,7 @@ public final class MusicPlayer {
     public static void rescan() {
         TRACKS.clear();
         try (Stream<Path> s = Files.list(dir())) {
-            s.filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".wav"))
+            s.filter(MusicPlayer::isAudio)
                     .sorted()
                     .forEach(TRACKS::add);
             status = "";
@@ -75,9 +79,9 @@ public final class MusicPlayer {
         stopClip();
         if (i < 0 || i >= TRACKS.size()) return;
         Path p = TRACKS.get(i);
-        try (AudioInputStream in = AudioSystem.getAudioInputStream(p.toFile())) {
+        try {
             Clip c = AudioSystem.getClip();
-            c.open(in);
+            c.open(decodeToPcm(p));
             clip = c;
             index = i;
             lyrics = loadLyrics(p);
@@ -176,6 +180,30 @@ public final class MusicPlayer {
         }
         playing = false;
         lyrics = new ArrayList<>();
+    }
+
+    private static boolean isAudio(Path p) {
+        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+        return n.endsWith(".wav") || n.endsWith(".mp3") || n.endsWith(".ogg");
+    }
+
+    /**
+     * Đọc mọi định dạng (wav, mp3, ogg) rồi đổi về PCM 16-bit trong bộ nhớ.
+     * Nhờ vậy Clip biết độ dài và tua được.
+     */
+    private static AudioInputStream decodeToPcm(Path p) throws IOException, UnsupportedAudioFileException {
+        try (AudioInputStream src = AudioSystem.getAudioInputStream(p.toFile())) {
+            AudioFormat base = src.getFormat();
+            int channels = base.getChannels();
+            float rate = base.getSampleRate();
+            AudioFormat pcm = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, rate, 16,
+                    channels, channels * 2, rate, false);
+            try (AudioInputStream dec = AudioSystem.getAudioInputStream(pcm, src)) {
+                byte[] data = dec.readAllBytes();
+                return new AudioInputStream(new ByteArrayInputStream(data), pcm,
+                        data.length / pcm.getFrameSize());
+            }
+        }
     }
 
     /** Đọc file .lrc cùng tên với bài hát. Dòng nào không đúng định dạng thì bỏ qua. */

@@ -28,6 +28,10 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Bộ giải mã mp3 và ogg cho trình phát nhạc, đóng gói sẵn trong jar (jar-in-jar)
+    include "com.googlecode.soundlibs:mp3spi:1.9.5.4"
+    include "com.googlecode.soundlibs:vorbisspi:1.0.3.3"
 }
 
 processResources {
