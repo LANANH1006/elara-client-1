@@ -14,14 +14,11 @@ import java.util.List;
 
 /** Bảng cài đặt riêng của một tính năng, mở bằng chuột phải ở menu Elara. */
 public class FeatureSettingsScreen extends Screen {
-    private static final int[] COLORS = {
-            0xFFFFFFFF, 0xFF30D158, 0xFF0A84FF, 0xFFFF9F0A, 0xFFFF453A, 0xFFBF5AF2
-    };
     private static final int PAD = 12;
     private static final int ROW_H = 26;
     private static final int TITLE_H = 30;
     private static final int SWATCH = 18;
-    private static final int SWATCH_START = 44;
+    private static final int COLOR_X = 56;
 
     /** Đọc một giá trị trong Layout */
     public interface Getter {
@@ -65,7 +62,7 @@ public class FeatureSettingsScreen extends Screen {
         return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
     }
 
-    /** Tính năng có màu để chọn */
+    /** Tính năng có màu để chọn bằng bảng màu */
     private static boolean hasColor(Feature f) {
         return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
     }
@@ -126,11 +123,6 @@ public class FeatureSettingsScreen extends Screen {
     private int trackX() { return px + PAD; }
     private int trackW() { return pw - PAD * 2; }
 
-    private int swatchX(int i) {
-        int span = pw - PAD * 2 - SWATCH_START - SWATCH;
-        return px + PAD + SWATCH_START + i * span / (COLORS.length - 1);
-    }
-
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         renderBackground(ctx, mouseX, mouseY, delta);
@@ -141,7 +133,7 @@ public class FeatureSettingsScreen extends Screen {
         for (int i = 0; i < rows.size(); i++) {
             drawRow(ctx, i, rows.get(i), l);
         }
-        if (hasColor(feature)) drawColorRow(ctx, l);
+        if (hasColor(feature)) drawColorRow(ctx);
     }
 
     private void drawRow(DrawContext ctx, int row, Ctl c, ElaraConfig.Layout l) {
@@ -161,17 +153,13 @@ public class FeatureSettingsScreen extends Screen {
         IosStyle.rounded(ctx, trackX(), ty, Math.max(6, Math.round(trackW() * frac)), 6, 3, IosStyle.ACCENT);
     }
 
-    private void drawColorRow(DrawContext ctx, ElaraConfig.Layout l) {
+    /** Dòng màu: ô xem trước màu hiện tại và nút mở bảng màu */
+    private void drawColorRow(DrawContext ctx) {
         int ry = rowY(rows.size());
-        int cy = ry + 4;
-        ctx.drawText(textRenderer, Text.literal(Lang.get("set.color")), px + PAD, ry + 9, IosStyle.TEXT, false);
-        for (int i = 0; i < COLORS.length; i++) {
-            int sx = swatchX(i);
-            if (COLORS[i] == l.color) {
-                IosStyle.rounded(ctx, sx - 2, cy - 2, SWATCH + 4, SWATCH + 4, (SWATCH + 4) / 2, IosStyle.TEXT);
-            }
-            IosStyle.rounded(ctx, sx, cy, SWATCH, SWATCH, SWATCH / 2, COLORS[i]);
-        }
+        ctx.drawText(textRenderer, Text.literal(Lang.get("set.color")), px + PAD, ry + 6, IosStyle.TEXT, false);
+        IosStyle.rounded(ctx, px + COLOR_X, ry + 4, SWATCH, SWATCH, 4, ElaraConfig.color(feature));
+        ctx.drawText(textRenderer, Text.literal(Lang.get("set.open_picker")),
+                px + COLOR_X + SWATCH + 8, ry + 6, IosStyle.ACCENT, false);
     }
 
     @Override
@@ -197,13 +185,10 @@ public class FeatureSettingsScreen extends Screen {
         }
 
         if (hasColor(feature)) {
-            int cy = rowY(rows.size()) + 4;
-            for (int i = 0; i < COLORS.length; i++) {
-                if (inside(mx, my, swatchX(i) - 2, cy - 2, SWATCH + 4, SWATCH + 4)) {
-                    l.color = COLORS[i];
-                    ElaraConfig.save();
-                    return true;
-                }
+            int ry = rowY(rows.size());
+            if (inside(mx, my, px + PAD - 4, ry, pw - PAD * 2 + 8, ROW_H - 4)) {
+                MinecraftClient.getInstance().setScreen(new ColorPickerScreen(this, feature));
+                return true;
             }
         }
         return super.mouseClicked(mx, my, button);

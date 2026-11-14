@@ -65,7 +65,7 @@ public final class ElementsHud {
     private static void key(DrawContext ctx, TextRenderer tr, int x, int y, int w, int h,
                             String label, boolean pressed, String id) {
         float p = IosStyle.progress("ks:" + id, pressed);
-        int bg = IosStyle.lerpColor(BG, ElaraConfig.layout(Feature.KEYSTROKES).color, p);
+        int bg = IosStyle.lerpColor(BG, ElaraConfig.color(Feature.KEYSTROKES), p);
         IosStyle.rounded(ctx, x, y, w, h, 4, bg);
         ctx.drawCenteredTextWithShadow(tr, Text.literal(label), x + w / 2, y + (h - 8) / 2, IosStyle.TEXT);
     }
@@ -88,7 +88,7 @@ public final class ElementsHud {
         IosStyle.rounded(ctx, 0, 0, maxW + 12, boxH, 6, BG);
         for (int i = 0; i < lines.size(); i++) {
             ctx.drawText(tr, Text.literal(lines.get(i)), 6, 5 + i * 10,
-                    ElaraConfig.layout(Feature.SYSINFO).color, true);
+                    ElaraConfig.color(Feature.SYSINFO), true);
         }
         ctx.getMatrices().pop();
     }

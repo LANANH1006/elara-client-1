@@ -29,7 +29,7 @@ public final class CrosshairHud {
         int len = Math.max(1, Math.round(l.get("length", 6) * s));
         int thick = Math.max(1, Math.round(l.get("thickness", 2) * s));
         int gap = Math.round(l.get("gap", 3) * s);
-        int color = l.color;
+        int color = ElaraConfig.color(Feature.PIXEL_CROSSHAIR);
 
         switch (l.get("shape", 0)) {
             case 1 -> dot(ctx, cx, cy, thick, color);

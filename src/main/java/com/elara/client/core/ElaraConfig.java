@@ -74,6 +74,17 @@ public final class ElaraConfig {
         return data.layouts.computeIfAbsent(f.name(), k -> defaultLayout(f));
     }
 
+    /** Màu đang dùng: màu đã chọn, hoặc màu cầu vồng tự chạy nếu bật Chroma */
+    public static int color(Feature f) {
+        Layout l = layout(f);
+        if (l.get("chroma", 0) == 1) {
+            float hue = (System.currentTimeMillis() % 3000L) / 3000f;
+            int rgb = ColorMath.hsbToRgb(hue, 0.8f, 1.0f);
+            return (l.color & 0xFF000000) | rgb;
+        }
+        return l.color;
+    }
+
     /** Vị trí mặc định của từng HUD, để các HUD không chồng lên nhau */
     private static Layout defaultLayout(Feature f) {
         Layout l = new Layout();

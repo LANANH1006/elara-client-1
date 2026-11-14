@@ -75,7 +75,10 @@ public final class Lang {
             e("set.entity_pct", "Khoảng cách thực thể", "Entity distance"),
             e("set.biome_radius", "Bán kính Biome Blend", "Biome blend radius"),
             e("set.mipmap", "Mức Mipmap", "Mipmap level"),
-            e("set.focus_fps", "FPS khi không focus", "FPS when unfocused")
+            e("set.focus_fps", "FPS khi không focus", "FPS when unfocused"),
+            e("set.open_picker", "Bảng màu >", "Color picker >"),
+            e("picker.title", "Bảng màu", "Color picker"),
+            e("picker.chroma", "Chroma (màu cầu vồng chạy)", "Chroma (rainbow cycle)")
     );
 
     private Lang() {}
