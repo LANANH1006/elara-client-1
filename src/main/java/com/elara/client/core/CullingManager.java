@@ -5,6 +5,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 
@@ -59,6 +60,18 @@ public final class CullingManager {
         if (d2 > ENTITY_RANGE * ENTITY_RANGE) return false;
         if (d2 < ALWAYS_VISIBLE * ALWAYS_VISIBLE) return true;
         return visible(c, cam, mid);
+    }
+
+    /** true nếu block entity (rương, biển, đầu...) cần vẽ: ẩn khi xa hơn khoảng cách cấu hình */
+    public static boolean keepBlockEntity(BlockPos pos) {
+        if (!ElaraConfig.isOn(Feature.LAG_BLOCK_ENTITIES)) return true;
+        MinecraftClient c = MinecraftClient.getInstance();
+        if (c.world == null || c.gameRenderer == null) return true;
+
+        int dist = ElaraConfig.layout(Feature.LAG_BLOCK_ENTITIES).get("dist", 24);
+        Vec3d cam = c.gameRenderer.getCamera().getPos();
+        double d2 = cam.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        return d2 <= (double) dist * dist;
     }
 
     private static boolean visible(MinecraftClient c, Vec3d from, Vec3d to) {

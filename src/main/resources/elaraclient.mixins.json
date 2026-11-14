@@ -17,6 +17,9 @@
     "BackgroundRendererMixin",
     "SpriteAnimatorMixin",
     "SplashOverlayMixin",
-    "ScreenBackgroundMixin"
+    "ScreenBackgroundMixin",
+    "BlockEntityRenderMixin",
+    "EntityRendererBadgeMixin",
+    "PlayerListHudMixin"
   ]
 }

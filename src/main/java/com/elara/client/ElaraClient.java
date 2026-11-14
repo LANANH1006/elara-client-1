@@ -11,6 +11,7 @@ import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
 import com.elara.client.fx.Effects;
+import com.elara.client.fx.BuildGuide;
 import com.elara.client.fx.PlayerMotion;
 import com.elara.client.fx.HitFx;
 import com.elara.client.fx.KnifeAnim;
@@ -65,6 +66,7 @@ public class ElaraClient implements ClientModInitializer {
             KeyTracker.tick(client);
             PlayerTracker.tick(client);
             PlayerMotion.tick(client);
+            BuildGuide.tick(client);
             KnifeAnim.tick(client);
             HitFx.tick();
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));

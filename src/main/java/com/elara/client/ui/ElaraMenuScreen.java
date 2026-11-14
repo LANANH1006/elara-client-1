@@ -95,6 +95,7 @@ public class ElaraMenuScreen extends Screen {
         return switch (g) {
             case FIX_LAG -> 2;
             case MISC -> 8;
+            case BUILDER -> 1;
             default -> 0;
         };
     }
@@ -215,6 +216,8 @@ public class ElaraMenuScreen extends Screen {
                     px + PAD, extraY(n, 1), IosStyle.fadeColor(IosStyle.TEXT_DIM), false);
         } else if (tab == Feature.Group.MISC) {
             drawMisc(ctx, n);
+        } else if (tab == Feature.Group.BUILDER) {
+            drawPill(ctx, px + PAD, extraY(n, 0), pw - PAD * 2, 20, Lang.get("builder.open"));
         }
     }
 
@@ -423,6 +426,9 @@ public class ElaraMenuScreen extends Screen {
                     : Lang.get("ui.gc_done") + freed + " MB";
         } else if (tab == Feature.Group.MISC) {
             tapMisc(client, n, mx, my);
+        } else if (tab == Feature.Group.BUILDER
+                && inside(mx, my, px + PAD, extraY(n, 0), pw - PAD * 2, 20)) {
+            client.setScreen(new BuilderScreen(this));
         }
     }
 

@@ -65,5 +65,10 @@ public final class Effects {
                     ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
             b.flush();
         }
+        if (ElaraConfig.isOn(Feature.BUILD_GUIDE)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
+            BuildGuide.draw(b);
+            b.flush();
+        }
     }
 }

@@ -33,6 +33,9 @@ public final class ElaraConfig {
         public int sceneTime = 1;            // 0 bình minh, 1 trưa, 2 hoàng hôn, 3 đêm
         public int sceneTree = 0;            // 0 anh đào, 1 sồi, 2 thông
         public int sceneCam = 0;             // 0 xoay vòng, 1 trôi nhẹ, 2 đứng yên
+        public Map<String, String> blockRemap = new LinkedHashMap<>(); // khối trong bản vẽ -> khối thay thế
+        public String schematic = "";        // tên file .litematic đang chọn
+        public int[] builderOrigin;          // gốc bản vẽ (x, y, z), null nếu chưa đặt
     }
 
     /** Vị trí, tỉ lệ và màu của một tính năng. Vị trí tính theo phần trăm màn hình. */
@@ -80,6 +83,36 @@ public final class ElaraConfig {
     public static int sceneTime() { return data.sceneTime; }
     public static int sceneTree() { return data.sceneTree; }
     public static int sceneCam() { return data.sceneCam; }
+
+    /** Khối thay thế của một khối trong bản vẽ, hoặc chính nó nếu không đổi */
+    public static String remap(String blockId) {
+        if (data.blockRemap == null) return blockId;
+        String to = data.blockRemap.get(blockId);
+        return to == null ? blockId : to;
+    }
+
+    /** Đặt khối thay thế. to = null thì quay về khối gốc. Lưu ngay ra config. */
+    public static void setRemap(String from, String to) {
+        if (data.blockRemap == null) data.blockRemap = new LinkedHashMap<>();
+        if (to == null) data.blockRemap.remove(from);
+        else data.blockRemap.put(from, to);
+        save();
+    }
+
+    public static String schematic() { return data.schematic == null ? "" : data.schematic; }
+
+    public static void setSchematic(String name) {
+        data.schematic = name == null ? "" : name;
+        save();
+    }
+
+    /** Gốc bản vẽ (x, y, z), hoặc null nếu chưa đặt */
+    public static int[] builderOrigin() { return data.builderOrigin; }
+
+    public static void setBuilderOrigin(int x, int y, int z) {
+        data.builderOrigin = new int[] {x, y, z};
+        save();
+    }
 
     /** Đổi một mục của cảnh 3D. Lưu luôn ra file để lần sau còn giữ. */
     public static void setScene(String key, int v) {

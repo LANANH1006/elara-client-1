@@ -161,6 +161,7 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(new Ctl(Lang.get("set.hit_style"), "", 0, styles.length - 1,
                         l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
             }
+            case LAG_BLOCK_ENTITIES -> list.add(slider(Lang.get("set.block_dist"), "", 8, 64, "dist", 24));
             case KNIFE_ANIM -> {
                 list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));
                 list.add(slider(Lang.get("set.hand_y"), "", -50, 50, "hy", 0));

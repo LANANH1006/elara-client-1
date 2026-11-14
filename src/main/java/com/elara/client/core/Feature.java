@@ -19,6 +19,7 @@ public enum Feature {
     NO_FOG(Group.FIX_LAG),
     NO_BLOCK_ANIM(Group.FIX_LAG),
     AFK_SAVER(Group.FIX_LAG),
+    LAG_BLOCK_ENTITIES(Group.FIX_LAG),
 
     RAIN_3D(Group.EFFECTS),
     VIRTUAL_WINGS(Group.EFFECTS),
@@ -36,7 +37,10 @@ public enum Feature {
     MUSIC_PLAYER(Group.MISC),
     LYRICS_ISLAND(Group.MISC),
     KEYSTROKES(Group.MISC),
-    SYSINFO(Group.MISC);
+    SYSINFO(Group.MISC),
+    BADGE(Group.MISC),
+
+    BUILD_GUIDE(Group.BUILDER);
 
     public enum Group {
         FIX_LAG(2),
@@ -44,7 +48,8 @@ public enum Feature {
         KNIVES(4),
         CROSSHAIR(5),
         MISC(6),
-        PACK(7);
+        BUILDER(7),
+        PACK(8);
 
         /** Phase sẽ viết code thật cho tab này */
         public final int phase;
