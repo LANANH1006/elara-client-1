@@ -43,6 +43,22 @@ public final class Effects {
                     ElaraConfig.color(Feature.SWORD_TRAIL));
             b.flush();
         }
+        WorldBatch.V camV = new WorldBatch.V(cam.x, cam.y, cam.z);
+        if (ElaraConfig.isOn(Feature.PVP_REACH)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
+            Reach.draw(b, client, ElaraConfig.color(Feature.PVP_REACH), a);
+            b.flush();
+        }
+        if (ElaraConfig.isOn(Feature.RAIN_3D)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
+            Rain.draw(b, camV, ElaraConfig.layout(Feature.RAIN_3D), ElaraConfig.color(Feature.RAIN_3D));
+            b.flush();
+        }
+        if (ElaraConfig.isOn(Feature.HIT_EFFECT)) {
+            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
+            HitFx.draw(b, camV, ElaraConfig.layout(Feature.HIT_EFFECT), ElaraConfig.color(Feature.HIT_EFFECT));
+            b.flush();
+        }
         if (ElaraConfig.isOn(Feature.VIRTUAL_WINGS)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
             Wings.draw(b, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),

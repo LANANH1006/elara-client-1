@@ -115,6 +115,26 @@ public final class WorldBatch {
         return (alpha << 24) | (argb & 0xFFFFFF);
     }
 
+    /** Đoạn dày {@code w} luôn quay mặt về camera, nhìn được từ mọi góc */
+    public void billboardBeam(V a, V b, V cam, double w, int argb) {
+        V dir = b.sub(a);
+        V mid = a.add(b).mul(0.5);
+        V p = cross(dir, cam.sub(mid));
+        double pl = Math.sqrt(p.x() * p.x() + p.y() * p.y() + p.z() * p.z());
+        if (pl < 1e-9) {
+            beam(a, b, w, argb);
+            return;
+        }
+        V n = p.mul(w / 2 / pl);
+        quad(a.add(n), a.sub(n), b.sub(n), b.add(n), argb);
+    }
+
+    private static V cross(V a, V b) {
+        return new V(a.y() * b.z() - a.z() * b.y(),
+                a.z() * b.x() - a.x() * b.z(),
+                a.x() * b.y() - a.y() * b.x());
+    }
+
     /** Vẽ toàn bộ tam giác đã gom. Không có gì để vẽ thì bỏ qua. */
     public void flush() {
         if (buf == null) return;

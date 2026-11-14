@@ -66,7 +66,8 @@ public class FeatureSettingsScreen extends Screen {
     private static boolean hasColor(Feature f) {
         return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR
                 || f == Feature.JUMP_RING || f == Feature.VIRTUAL_WINGS
-                || f == Feature.HEAD_ACCESSORY || f == Feature.FOOTSTEP_AURA || f == Feature.SWORD_TRAIL;
+                || f == Feature.HEAD_ACCESSORY || f == Feature.FOOTSTEP_AURA || f == Feature.SWORD_TRAIL
+                || f == Feature.PVP_REACH || f == Feature.HIT_EFFECT || f == Feature.RAIN_3D;
     }
 
     /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
@@ -139,6 +140,17 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(visibilityCtl());
             }
             case SWORD_TRAIL -> list.add(visibilityCtl());
+            case RAIN_3D -> {
+                list.add(slider(Lang.get("set.density"), "", 20, 300, "density", 120));
+                list.add(slider(Lang.get("set.speed"), "", 1, 10, "speed", 5));
+            }
+            case HIT_EFFECT -> {
+                String[] styles = {
+                        Lang.get("hit.rays"), Lang.get("hit.stars"), Lang.get("hit.hearts"), Lang.get("hit.sparks")
+                };
+                list.add(new Ctl(Lang.get("set.hit_style"), "", 0, styles.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
+            }
             case KNIFE_ANIM -> {
                 list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));
                 list.add(slider(Lang.get("set.hand_y"), "", -50, 50, "hy", 0));

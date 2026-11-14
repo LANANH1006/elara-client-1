@@ -92,6 +92,7 @@ public final class ElaraConfig {
             case KEYSTROKES -> { l.xPct = 1; l.yPct = 50; l.color = 0xFF0A84FF; }
             case SYSINFO -> { l.xPct = 1; l.yPct = 72; }
             case PIXEL_CROSSHAIR -> { l.xPct = 50; l.yPct = 50; }
+            case RAIN_3D -> l.color = 0xFF9FD8FF;
             default -> { }
         }
         return l;

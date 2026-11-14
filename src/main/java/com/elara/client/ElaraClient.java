@@ -11,6 +11,7 @@ import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
 import com.elara.client.fx.Effects;
+import com.elara.client.fx.HitFx;
 import com.elara.client.fx.KnifeAnim;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
@@ -19,7 +20,9 @@ import com.elara.client.ui.IosSplashScreen;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.util.ActionResult;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
@@ -54,6 +57,7 @@ public class ElaraClient implements ClientModInitializer {
             KeyTracker.tick(client);
             PlayerTracker.tick(client);
             KnifeAnim.tick(client);
+            HitFx.tick();
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
@@ -95,7 +99,15 @@ public class ElaraClient implements ClientModInitializer {
             LyricsHud.render(context);
         });
 
-        // Hiệu ứng trong thế giới: vòng nhảy và cánh ảo
+        // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng
         WorldRenderEvents.AFTER_TRANSLUCENT.register(Effects::render);
+
+        // Đánh trúng thực thể: tạo hiệu ứng tại vị trí mục tiêu (không chặn hành động)
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (ElaraConfig.isOn(Feature.HIT_EFFECT)) {
+                HitFx.spawn(entity);
+            }
+            return ActionResult.PASS;
+        });
     }
 }

@@ -13,21 +13,11 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 /** Menu kính mờ với 6 tab */
 public class ElaraMenuScreen extends Screen {
     private static final Feature.Group[] TABS = Feature.Group.values();
-    /**
-     * Tính năng chưa có code thật. Công tắc bị khóa và ghi "Sắp có",
-     * không cho bật/tắt để tránh nút rỗng. Xóa khỏi tập này khi làm xong.
-     */
-    private static final Set<Feature> UNBUILT = EnumSet.of(
-            Feature.RAIN_3D,
-            Feature.KNIFE_ANIM, Feature.PVP_REACH, Feature.HIT_EFFECT
-    );
     private static final int PAD = 10;
     private static final int TAB_H = 18;
     private static final int ROW_H = 20;
@@ -70,10 +60,6 @@ public class ElaraMenuScreen extends Screen {
     private int trackX() { return px + PAD; }
     private int trackW() { return pw - PAD * 2; }
 
-    private static boolean isBuilt(Feature f) {
-        return !UNBUILT.contains(f);
-    }
-
     // ---------- vẽ ----------
 
     @Override
@@ -111,14 +97,8 @@ public class ElaraMenuScreen extends Screen {
         for (int i = 0; i < items.size(); i++) {
             Feature f = items.get(i);
             int ry = rowY(i);
-            if (isBuilt(f)) {
-                ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT, false);
-                IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, ElaraConfig.isOn(f), f);
-            } else {
-                ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT_DIM, false);
-                ctx.drawText(textRenderer, Text.literal(Lang.get("ui.soon")), toggleX() + 2, ry + 4,
-                        IosStyle.TEXT_DIM, false);
-            }
+            ctx.drawText(textRenderer, Text.literal(f.label()), px + PAD, ry + 4, IosStyle.TEXT, false);
+            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, ElaraConfig.isOn(f), f);
         }
 
         if (tab == Feature.Group.FIX_LAG) {
@@ -230,7 +210,7 @@ public class ElaraMenuScreen extends Screen {
 
         List<Feature> items = Feature.inGroup(tab);
         for (int i = 0; i < items.size(); i++) {
-            if (isBuilt(items.get(i)) && inside(mx, my, toggleX() - 6, rowY(i), 42, ROW_H)) {
+            if (inside(mx, my, toggleX() - 6, rowY(i), 42, ROW_H)) {
                 ElaraConfig.toggle(items.get(i));
                 ElaraConfig.save();
                 LagFix.sync(MinecraftClient.getInstance());
