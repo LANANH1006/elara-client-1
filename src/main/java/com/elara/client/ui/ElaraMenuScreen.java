@@ -25,7 +25,7 @@ public class ElaraMenuScreen extends Screen {
      * không cho bật/tắt để tránh nút rỗng. Xóa khỏi tập này khi làm xong.
      */
     private static final Set<Feature> UNBUILT = EnumSet.of(
-            Feature.RAIN_3D, Feature.HEAD_ACCESSORY,
+            Feature.RAIN_3D,
             Feature.KNIFE_ANIM, Feature.PVP_REACH, Feature.HIT_EFFECT,
             Feature.MUSIC_PLAYER, Feature.LYRICS_ISLAND
     );

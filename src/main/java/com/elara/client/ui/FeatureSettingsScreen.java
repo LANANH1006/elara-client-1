@@ -65,7 +65,8 @@ public class FeatureSettingsScreen extends Screen {
     /** Tính năng có màu để chọn bằng bảng màu */
     private static boolean hasColor(Feature f) {
         return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR
-                || f == Feature.JUMP_RING || f == Feature.VIRTUAL_WINGS;
+                || f == Feature.JUMP_RING || f == Feature.VIRTUAL_WINGS
+                || f == Feature.HEAD_ACCESSORY || f == Feature.FOOTSTEP_AURA || f == Feature.SWORD_TRAIL;
     }
 
     /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
@@ -127,6 +128,17 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(slider(Lang.get("set.flap"), "", 1, 10, "speed", 5));
                 list.add(visibilityCtl());
             }
+            case HEAD_ACCESSORY -> {
+                list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
+                list.add(visibilityCtl());
+            }
+            case FOOTSTEP_AURA -> {
+                String[] styles = {Lang.get("foot.ring"), Lang.get("foot.fire")};
+                list.add(new Ctl(Lang.get("set.foot_style"), "", 0, styles.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
+                list.add(visibilityCtl());
+            }
+            case SWORD_TRAIL -> list.add(visibilityCtl());
             default -> { }
         }
         return list;

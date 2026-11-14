@@ -93,6 +93,28 @@ public final class WorldBatch {
         quad(a.add(p), a.sub(p), b.sub(p), b.add(p), argb);
     }
 
+    /** Vòng nằm ngang quanh tâm {@code c}, bán kính r, dày {@code thick} */
+    public void ring(V c, double r, double thick, int segs, double rot, int argb) {
+        double ri = r - thick / 2;
+        double ro = r + thick / 2;
+        for (int i = 0; i < segs; i++) {
+            double a0 = rot + 2 * Math.PI * i / segs;
+            double a1 = rot + 2 * Math.PI * (i + 1) / segs;
+            quad(polar(c, ri, a0), polar(c, ro, a0), polar(c, ro, a1), polar(c, ri, a1), argb);
+        }
+    }
+
+    private static V polar(V c, double r, double a) {
+        return new V(c.x() + r * Math.cos(a), c.y(), c.z() + r * Math.sin(a));
+    }
+
+    /** Đổi độ mờ của màu ARGB theo hệ số k từ 0 đến 1 */
+    public static int withAlpha(int argb, float k) {
+        float kk = Math.max(0f, Math.min(1f, k));
+        int alpha = (int) (((argb >>> 24) & 0xFF) * kk);
+        return (alpha << 24) | (argb & 0xFFFFFF);
+    }
+
     /** Vẽ toàn bộ tam giác đã gom. Không có gì để vẽ thì bỏ qua. */
     public void flush() {
         if (buf == null) return;
