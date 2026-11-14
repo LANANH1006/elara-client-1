@@ -11,6 +11,7 @@ import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
 import com.elara.client.fx.Effects;
+import com.elara.client.fx.KnifeAnim;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
 import com.elara.client.ui.ElaraMenuScreen;
@@ -52,6 +53,7 @@ public class ElaraClient implements ClientModInitializer {
             CullingManager.tick();
             KeyTracker.tick(client);
             PlayerTracker.tick(client);
+            KnifeAnim.tick(client);
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)

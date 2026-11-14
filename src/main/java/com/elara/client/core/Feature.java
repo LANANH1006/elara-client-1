@@ -16,6 +16,8 @@ public enum Feature {
     LAG_BIOME(Group.FIX_LAG),
     LAG_MIPMAP(Group.FIX_LAG),
     LAG_FOCUS_FPS(Group.FIX_LAG),
+    NO_FOG(Group.FIX_LAG),
+    NO_BLOCK_ANIM(Group.FIX_LAG),
 
     RAIN_3D(Group.EFFECTS),
     VIRTUAL_WINGS(Group.EFFECTS),

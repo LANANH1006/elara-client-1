@@ -30,7 +30,7 @@ public class ElaraMenuScreen extends Screen {
     );
     private static final int PAD = 10;
     private static final int TAB_H = 18;
-    private static final int ROW_H = 24;
+    private static final int ROW_H = 20;
     private static final int PACK_VISIBLE = 6;
 
     private final Screen parent;

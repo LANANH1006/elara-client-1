@@ -139,6 +139,13 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(visibilityCtl());
             }
             case SWORD_TRAIL -> list.add(visibilityCtl());
+            case KNIFE_ANIM -> {
+                list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));
+                list.add(slider(Lang.get("set.hand_y"), "", -50, 50, "hy", 0));
+                list.add(slider(Lang.get("set.hand_z"), "", -50, 50, "hz", 0));
+                list.add(slider(Lang.get("set.tilt"), "°", -90, 90, "tilt", 0));
+                list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
+            }
             default -> { }
         }
         return list;

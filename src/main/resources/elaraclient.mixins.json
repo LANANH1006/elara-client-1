@@ -12,6 +12,9 @@
     "ParticleAccessor",
     "ParticleManagerMixin",
     "EntityRenderDispatcherMixin",
-    "InGameHudMixin"
+    "InGameHudMixin",
+    "HeldItemRendererMixin",
+    "BackgroundRendererMixin",
+    "SpriteAnimatorMixin"
   ]
 }
