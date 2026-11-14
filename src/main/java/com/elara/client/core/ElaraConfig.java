@@ -29,12 +29,19 @@ public final class ElaraConfig {
         public Map<String, Layout> layouts = new LinkedHashMap<>();
         public int themeAccent = 0xFF0A84FF; // màu chủ đạo của menu (ARGB)
         public int hudVersion = 0;           // 2 = đã áp dụng vị trí HUD mặc định mới
+        public int titleMode = 0;            // 0 = ảnh nền tĩnh, 1 = cảnh 3D sống
+        public int sceneTime = 1;            // 0 bình minh, 1 trưa, 2 hoàng hôn, 3 đêm
+        public int sceneTree = 0;            // 0 anh đào, 1 sồi, 2 thông
+        public int sceneCam = 0;             // 0 xoay vòng, 1 trôi nhẹ, 2 đứng yên
     }
 
     /** Vị trí, tỉ lệ và màu của một tính năng. Vị trí tính theo phần trăm màn hình. */
     public static final class Layout {
         public int xPct = 50;
         public int yPct = 5;
+        /** Vị trí theo pixel GUI, do HUD Editor ghi. -1 nghĩa là dùng xPct/yPct. */
+        public int xPx = -1;
+        public int yPx = -1;
         public int scalePct = 100;
         public int color = 0xFFFFFFFF;
         /** Các thông số riêng của tính năng (kiểu, độ dài, ...) */
@@ -67,6 +74,24 @@ public final class ElaraConfig {
     public static int themeAccent() { return data.themeAccent; }
 
     public static void setThemeAccent(int argb) { data.themeAccent = argb | 0xFF000000; }
+
+    /** Nền màn hình chính: 0 ảnh tĩnh, 1 cảnh 3D */
+    public static int titleMode() { return data.titleMode; }
+    public static int sceneTime() { return data.sceneTime; }
+    public static int sceneTree() { return data.sceneTree; }
+    public static int sceneCam() { return data.sceneCam; }
+
+    /** Đổi một mục của cảnh 3D. Lưu luôn ra file để lần sau còn giữ. */
+    public static void setScene(String key, int v) {
+        switch (key) {
+            case "mode" -> data.titleMode = clamp(v, 0, 1);
+            case "time" -> data.sceneTime = clamp(v, 0, 3);
+            case "tree" -> data.sceneTree = clamp(v, 0, 2);
+            case "cam" -> data.sceneCam = clamp(v, 0, 2);
+            default -> { return; }
+        }
+        save();
+    }
 
     /** Đưa một tính năng về vị trí, tỉ lệ, màu mặc định (giữ nguyên bật/tắt) */
     public static void resetLayout(Feature f) {

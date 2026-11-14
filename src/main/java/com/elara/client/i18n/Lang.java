@@ -160,7 +160,27 @@ public final class Lang {
             e("ui.no_options", "Tính năng này chưa có tùy chỉnh", "This feature has no options"),
             e("ui.close", "Đóng", "Close"),
             e("ui.anim_note", "Hiệu ứng kính: không làm mờ nền thật, dùng lớp trong suốt và viền sáng",
-                    "Glass effect: no real background blur, uses translucent layers and a light edge")
+                    "Glass effect: no real background blur, uses translucent layers and a light edge"),
+
+            e("title.scene", "Scene", "Scene"),
+            e("scene.title", "Scene nền", "Scene background"),
+            e("scene.mode", "Chế độ nền", "Background mode"),
+            e("scene.mode.static", "Ảnh tĩnh", "Static image"),
+            e("scene.mode.3d", "Cảnh 3D sống", "Live 3D scene"),
+            e("scene.time", "Thời gian", "Time"),
+            e("scene.time.dawn", "Bình minh", "Dawn"),
+            e("scene.time.noon", "Trưa", "Noon"),
+            e("scene.time.dusk", "Hoàng hôn", "Dusk"),
+            e("scene.time.night", "Đêm", "Night"),
+            e("scene.tree", "Loại cây", "Tree type"),
+            e("scene.tree.cherry", "Anh đào", "Cherry"),
+            e("scene.tree.oak", "Sồi", "Oak"),
+            e("scene.tree.pine", "Thông", "Pine"),
+            e("scene.cam", "Camera", "Camera"),
+            e("scene.cam.orbit", "Xoay vòng", "Orbit"),
+            e("scene.cam.drift", "Trôi nhẹ", "Drift"),
+            e("scene.cam.still", "Đứng yên", "Still"),
+            e("scene.hint", "Mỗi lần chọn được lưu tự động", "Each choice is saved automatically")
     );
 
     private Lang() {}

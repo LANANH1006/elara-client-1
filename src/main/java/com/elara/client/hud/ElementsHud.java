@@ -37,8 +37,10 @@ public final class ElementsHud {
         int sw = client.getWindow().getScaledWidth();
         int sh = client.getWindow().getScaledHeight();
         float s = l.scalePct / 100f;
+        double ox = l.xPx >= 0 ? l.xPx : sw * l.xPct / 100.0;
+        double oy = l.yPx >= 0 ? l.yPx : sh * l.yPct / 100.0;
         ctx.getMatrices().push();
-        ctx.getMatrices().translate(sw * l.xPct / 100.0, sh * l.yPct / 100.0, 0.0);
+        ctx.getMatrices().translate(ox, oy, 0.0);
         ctx.getMatrices().scale(s, s, 1f);
     }
 
@@ -57,8 +59,9 @@ public final class ElementsHud {
         key(ctx, tr, half + GAP, 2 * STEP, half, KEY, "RMB", opts.useKey.isPressed(), "RMB");
         key(ctx, tr, 0, 3 * STEP, 3 * KEY + 2 * GAP, KEY, "SPACE", opts.jumpKey.isPressed(), "SPACE");
 
-        ctx.drawText(tr, Text.literal("CPS " + KeyTracker.cpsLeft() + " | " + KeyTracker.cpsRight()),
-                0, 4 * STEP + 2, IosStyle.TEXT, true);
+        String cps = "CPS " + KeyTracker.cpsLeft() + " | " + KeyTracker.cpsRight();
+        ctx.drawText(tr, Text.literal(cps), 0, 4 * STEP + 2, IosStyle.TEXT, true);
+        HudBounds.record(Feature.KEYSTROKES, Math.max(3 * KEY + 2 * GAP, tr.getWidth(cps)), 4 * STEP + 10);
         ctx.getMatrices().pop();
     }
 
@@ -86,6 +89,7 @@ public final class ElementsHud {
         for (String line : lines) maxW = Math.max(maxW, tr.getWidth(line));
         int boxH = lines.size() * 10 + 6;
         IosStyle.rounded(ctx, 0, 0, maxW + 12, boxH, 6, BG);
+        HudBounds.record(Feature.SYSINFO, maxW + 12, boxH);
         for (int i = 0; i < lines.size(); i++) {
             ctx.drawText(tr, Text.literal(lines.get(i)), 6, 5 + i * 10,
                     ElaraConfig.color(Feature.SYSINFO), true);

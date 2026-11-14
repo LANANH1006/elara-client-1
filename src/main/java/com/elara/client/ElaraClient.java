@@ -15,9 +15,15 @@ import com.elara.client.fx.HitFx;
 import com.elara.client.fx.KnifeAnim;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
+import com.elara.client.i18n.Lang;
 import com.elara.client.ui.ElaraMenuScreen;
 import com.elara.client.ui.IosSplashScreen;
+import com.elara.client.ui.SceneScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -101,6 +107,16 @@ public class ElaraClient implements ClientModInitializer {
 
         // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng
         WorldRenderEvents.AFTER_TRANSLUCENT.register(Effects::render);
+
+        // Nút Scene ở góc dưới phải màn hình chính: mở bảng chọn nền ảnh tĩnh hoặc cảnh 3D
+        ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
+            if (!(screen instanceof TitleScreen)) return;
+            ButtonWidget scene = ButtonWidget.builder(Text.literal(Lang.get("title.scene")),
+                            b -> client.setScreen(new SceneScreen(screen)))
+                    .dimensions(sw - 80, sh - 26, 70, 20)
+                    .build();
+            Screens.getButtons(screen).add(scene);
+        });
 
         // Đánh trúng thực thể: tạo hiệu ứng tại vị trí mục tiêu (không chặn hành động)
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {

@@ -89,8 +89,9 @@ public class FeatureSettingsScreen extends Screen {
     private static List<Ctl> rowsFor(Feature f) {
         List<Ctl> list = new ArrayList<>();
         if (hasPosition(f)) {
-            list.add(new Ctl(Lang.get("set.x"), "%", 0, 100, l -> l.xPct, (l, v) -> l.xPct = v, null));
-            list.add(new Ctl(Lang.get("set.y"), "%", 0, 100, l -> l.yPct, (l, v) -> l.yPct = v, null));
+            // Đổi bằng thanh trượt thì bỏ vị trí pixel để phần trăm có hiệu lực
+            list.add(new Ctl(Lang.get("set.x"), "%", 0, 100, l -> l.xPct, (l, v) -> { l.xPct = v; l.xPx = -1; }, null));
+            list.add(new Ctl(Lang.get("set.y"), "%", 0, 100, l -> l.yPct, (l, v) -> { l.yPct = v; l.yPx = -1; }, null));
             list.add(new Ctl(Lang.get("set.scale"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
         }
         list.addAll(extraControls(f));
