@@ -11,11 +11,13 @@ import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
 import com.elara.client.fx.Effects;
+import com.elara.client.fx.PlayerMotion;
 import com.elara.client.fx.HitFx;
 import com.elara.client.fx.KnifeAnim;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
 import com.elara.client.i18n.Lang;
+import com.elara.client.hud.AfkOverlay;
 import com.elara.client.ui.ElaraMenuScreen;
 import com.elara.client.ui.IosSplashScreen;
 import com.elara.client.ui.SceneScreen;
@@ -62,6 +64,7 @@ public class ElaraClient implements ClientModInitializer {
             CullingManager.tick();
             KeyTracker.tick(client);
             PlayerTracker.tick(client);
+            PlayerMotion.tick(client);
             KnifeAnim.tick(client);
             HitFx.tick();
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
@@ -103,6 +106,7 @@ public class ElaraClient implements ClientModInitializer {
             ElementsHud.render(context);
             CrosshairHud.render(context);
             LyricsHud.render(context);
+            AfkOverlay.render(context); // phủ cuối cùng, nằm trên mọi HUD
         });
 
         // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng

@@ -106,11 +106,15 @@ public final class LagFix {
         int view = b.viewDistance;
         if (render) view = Math.min(view, num(Feature.LAG_RENDER, "viewCap", 12));
         if (gpu) view = Math.min(view, num(Feature.LAG_GPU_SAVER, "viewCap", 8));
+        // Chế độ AFK tiết kiệm pin: khóa 10 FPS, tầm nhìn 2 chunk
+        boolean afk = ElaraConfig.isOn(Feature.AFK_SAVER);
+        if (afk) view = Math.min(view, 2);
         o.getViewDistance().setValue(view);
 
         int fps = b.maxFps;
         if (gpu) fps = Math.min(fps, num(Feature.LAG_GPU_SAVER, "fpsCap", 60));
         if (focus && !client.isWindowFocused()) fps = Math.min(fps, num(Feature.LAG_FOCUS_FPS, "fps", 10));
+        if (afk) fps = Math.min(fps, 10);
         o.getMaxFps().setValue(fps);
 
         var particlesOpt = o.getParticles();

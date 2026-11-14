@@ -21,6 +21,8 @@ base {
 
 repositories {
     mavenCentral()
+    // Mod Menu: chỉ dùng lúc biên dịch để viết API. Không đóng gói vào jar.
+    maven { url = "https://maven.terraformersmc.com/releases/" }
 }
 
 dependencies {
@@ -28,6 +30,7 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modCompileOnly "com.terraformersmc:modmenu:13.0.3"
 
     // Bộ giải mã mp3 và ogg cho trình phát nhạc, đóng gói sẵn trong jar (jar-in-jar)
     include "com.googlecode.soundlibs:mp3spi:1.9.5.4"

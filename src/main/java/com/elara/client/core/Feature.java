@@ -18,6 +18,7 @@ public enum Feature {
     LAG_FOCUS_FPS(Group.FIX_LAG),
     NO_FOG(Group.FIX_LAG),
     NO_BLOCK_ANIM(Group.FIX_LAG),
+    AFK_SAVER(Group.FIX_LAG),
 
     RAIN_3D(Group.EFFECTS),
     VIRTUAL_WINGS(Group.EFFECTS),

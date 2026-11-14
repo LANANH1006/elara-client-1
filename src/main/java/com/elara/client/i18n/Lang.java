@@ -180,7 +180,13 @@ public final class Lang {
             e("scene.cam.orbit", "Xoay vòng", "Orbit"),
             e("scene.cam.drift", "Trôi nhẹ", "Drift"),
             e("scene.cam.still", "Đứng yên", "Still"),
-            e("scene.hint", "Mỗi lần chọn được lưu tự động", "Each choice is saved automatically")
+            e("scene.hint", "Mỗi lần chọn được lưu tự động", "Each choice is saved automatically"),
+
+            e("feature.afk_saver", "Chế độ AFK tiết kiệm pin", "AFK power saver"),
+            e("desc.afk_saver", "Khóa 10 FPS, tầm nhìn 2 chunk, phủ màn hình tối có đồng hồ",
+                    "Lock 10 FPS, 2-chunk view, dim screen with a clock"),
+            e("afk.status", "Đang treo máy · tiết kiệm pin", "Idle mode · power saving"),
+            e("afk.hint", "Mở menu bằng Right Shift để tắt chế độ này", "Open the menu with Right Shift to turn this off")
     );
 
     private Lang() {}

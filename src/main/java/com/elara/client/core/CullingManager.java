@@ -17,7 +17,8 @@ import net.minecraft.world.RaycastContext;
  * Ngân sách tia giới hạn số lần raycast mỗi tick để không tự gây lag.
  */
 public final class CullingManager {
-    private static final double PARTICLE_RANGE = 48.0;
+    /** Particle xa hơn 16 khối bị bỏ khi bật Fix Lag hạt */
+    private static final double PARTICLE_RANGE = 16.0;
     private static final double ENTITY_RANGE = 96.0;
     private static final double ALWAYS_VISIBLE = 6.0;
     private static final int RAY_BUDGET = 40;

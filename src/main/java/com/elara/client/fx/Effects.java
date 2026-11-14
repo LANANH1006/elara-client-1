@@ -62,7 +62,7 @@ public final class Effects {
         if (ElaraConfig.isOn(Feature.VIRTUAL_WINGS)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
             Wings.draw(b, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
-                    ElaraConfig.color(Feature.VIRTUAL_WINGS), a);
+                    ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
             b.flush();
         }
     }

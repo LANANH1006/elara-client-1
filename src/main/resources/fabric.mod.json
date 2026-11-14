@@ -14,6 +14,9 @@
   "entrypoints": {
     "client": [
       "com.elara.client.ElaraClient"
+    ],
+    "modmenu": [
+      "com.elara.client.compat.ModMenuCompat"
     ]
   },
   "mixins": [
