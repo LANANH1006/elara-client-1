@@ -32,6 +32,7 @@ public enum Feature {
 
     KNIFE_ANIM(Group.KNIVES),
     SWORD_TRAIL(Group.KNIVES),
+    WEAPON_3D(Group.KNIVES),
 
     PIXEL_CROSSHAIR(Group.CROSSHAIR),
     PVP_REACH(Group.CROSSHAIR),

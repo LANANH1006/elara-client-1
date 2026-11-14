@@ -77,7 +77,8 @@ public class FeatureSettingsScreen extends Screen {
                 || f == Feature.JUMP_RING || f == Feature.VIRTUAL_WINGS
                 || f == Feature.HEAD_ACCESSORY || f == Feature.FOOTSTEP_AURA || f == Feature.SWORD_TRAIL
                 || f == Feature.PVP_REACH || f == Feature.HIT_EFFECT || f == Feature.RAIN_3D
-                || f == Feature.CAPE || f == Feature.BODY_GLOW || f == Feature.RIBBON_TRAIL;
+                || f == Feature.CAPE || f == Feature.BODY_GLOW || f == Feature.RIBBON_TRAIL
+                || f == Feature.WEAPON_3D;
     }
 
     /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
@@ -181,6 +182,12 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(slider(Lang.get("set.trail_len"), "", 4, 24, "len", 16));
                 list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
                 list.add(visibilityCtl());
+            }
+            case WEAPON_3D -> {
+                String[] weapons = {Lang.get("weapon.cs2"), Lang.get("weapon.katana")};
+                list.add(new Ctl(Lang.get("set.style"), "", 0, weapons.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), weapons));
+                list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
             }
             case KNIFE_ANIM -> {
                 list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));

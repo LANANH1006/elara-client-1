@@ -165,6 +165,7 @@ public final class ElaraConfig {
             case SYSINFO -> { l.xPct = 1; l.yPct = 30; }
             case PIXEL_CROSSHAIR -> { l.xPct = 50; l.yPct = 50; }
             case RAIN_3D -> l.color = 0xFF9FD8FF;
+            case WEAPON_3D -> l.color = 0xFF7FE8FF;
             default -> { }
         }
         return l;

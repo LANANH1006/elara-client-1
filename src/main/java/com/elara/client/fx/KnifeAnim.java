@@ -42,7 +42,7 @@ public final class KnifeAnim {
         lastSwap = swap;
     }
 
-    /** Bấm phím Inspect: xoay vũ khí đang cầm một vòng. Chỉ có tác dụng khi bật tính năng Dao. */
+    /** Bấm phím Inspect: xoay vũ khí đang cầm một vòng. Hiện khi bật Vũ khí 3D hoặc Hoạt ảnh dao. */
     public static void inspect(MinecraftClient client) {
         if (client.player != null && isWeapon(client.player.getMainHandStack())) {
             spinStart = System.currentTimeMillis();
@@ -66,6 +66,11 @@ public final class KnifeAnim {
         if (spin != 0f) {
             m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(spin));
         }
+    }
+
+    /** Góc xoay hiện tại của hoạt ảnh, dùng cho vũ khí 3D. 0 khi không xoay. */
+    public static float spinDegrees() {
+        return spinAngle();
     }
 
     /** Góc xoay hiện tại, 0 đến 360 độ, theo đường cong mượt. 0 khi không xoay. */
