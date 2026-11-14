@@ -161,7 +161,7 @@ public class ElaraMenuScreen extends Screen {
                 drawMiniButton(ctx, upX(), ry + 3, 36, Lang.get("pack.up"));
                 drawMiniButton(ctx, downX(), ry + 3, 44, Lang.get("pack.down"));
             }
-            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, e.enabled(), "pack:" + e.name());
+            IosStyle.toggleSwitch(ctx, toggleX(), ry + 4, e.enabled(), "pack:" + e.id());
         }
         drawButton(ctx, PACK_VISIBLE, Lang.get("pack.reload"));
         ctx.drawText(textRenderer, Text.literal(Lang.get("pack.hint")),
@@ -279,15 +279,15 @@ public class ElaraMenuScreen extends Screen {
             PackManager.Entry e = entries.get(packScroll + i);
             int ry = rowY(i);
             if (inside(mx, my, toggleX() - 6, ry, 42, ROW_H)) {
-                PackManager.setEnabled(client, e.name(), !e.enabled());
+                PackManager.setEnabled(client, e.id(), !e.enabled());
                 return true;
             }
             if (e.enabled() && inside(mx, my, upX(), ry + 3, 36, 18)) {
-                PackManager.move(client, e.name(), -1);
+                PackManager.move(client, e.id(), -1);
                 return true;
             }
             if (e.enabled() && inside(mx, my, downX(), ry + 3, 44, 18)) {
-                PackManager.move(client, e.name(), 1);
+                PackManager.move(client, e.id(), 1);
                 return true;
             }
         }
