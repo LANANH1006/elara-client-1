@@ -16,6 +16,8 @@ public final class ElaraAssets {
     public static final Identifier TITLE_BG = Identifier.of("elaraclient", "runtime/title_bg");
     /** Texture lông vũ 256x256 cho cánh ảo (RGBA, nền trong suốt) */
     public static final Identifier WING_FEATHER = Identifier.of("elaraclient", "runtime/wings_feather");
+    /** Texture tinh vân 256x256 cho cánh kiểu Galaxy (một bên cánh, RGBA, sinh bằng Python) */
+    public static final Identifier WING_GALAXY = Identifier.of("elaraclient", "runtime/wings_galaxy");
     /** Vết nứt khiên 64x64 cho Shield Breaker */
     public static final Identifier SHIELD_CRACK = Identifier.of("elaraclient", "runtime/shield_crack");
 
@@ -29,6 +31,7 @@ public final class ElaraAssets {
         tried = true;
         load("assets/elaraclient/textures/gui/title_bg.png", TITLE_BG);
         load("assets/elaraclient/textures/entity/wings_feather.png", WING_FEATHER);
+        load("assets/elaraclient/textures/entity/wings_galaxy.png", WING_GALAXY);
         load("assets/elaraclient/textures/gui/shield_crack.png", SHIELD_CRACK);
     }
 

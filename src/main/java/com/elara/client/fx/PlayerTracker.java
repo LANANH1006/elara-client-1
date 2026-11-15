@@ -23,6 +23,11 @@ public final class PlayerTracker {
         double px, py, pz;
         double x, y, z;
         float yaw;
+        /** Góc thân (không phải góc đầu) ở tick này và tick trước, để nội suy cánh */
+        float bodyYaw;
+        float prevBodyYaw;
+        /** Đang cúi (giữ Shift) để cánh hạ xuống */
+        boolean sneaking;
         boolean onGround;
         boolean ready;
         long lastStep;
@@ -66,6 +71,7 @@ public final class PlayerTracker {
                 t.py = t.y = p.getY();
                 t.pz = t.z = p.getZ();
                 t.onGround = p.isOnGround();
+                t.bodyYaw = t.prevBodyYaw = p.getBodyYaw();
                 t.ready = true;
             } else {
                 t.px = t.x;
@@ -76,6 +82,9 @@ public final class PlayerTracker {
                 t.z = p.getZ();
             }
             t.yaw = p.getYaw();
+            t.prevBodyYaw = t.bodyYaw;
+            t.bodyYaw = p.getBodyYaw();
+            t.sneaking = p.isInSneakingPose();
             boolean ground = p.isOnGround();
             if (t.onGround && !ground && p.getVelocity().y > 0.1) {
                 JUMPS.add(new Jump(id, t.x, t.y, t.z, now));

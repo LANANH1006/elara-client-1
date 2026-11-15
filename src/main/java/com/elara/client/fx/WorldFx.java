@@ -1,8 +1,8 @@
 package com.elara.client.fx;
 
+import com.elara.client.core.ColorMath;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
-import com.elara.client.core.ColorMath;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.fluid.Fluids;
@@ -11,48 +11,52 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.joml.Matrix4f;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
- * Thế giới sống động, chỉ dùng WorldBatch (tam giác và đoạn màu, không shader, không framebuffer)
- * nên chạy được trên OpenGL thuần của PojavLauncher và FCL.
+ * Thế giới sống động, chỉ dùng WorldBatch (tam giác và đoạn màu, không shader, không framebuffer).
  *
- * Bầu trời (9 kiểu, gồm Sakura): đổi màu nền trời qua mixin getSkyColor, và vẽ các đốm sao, tinh vân,
- * cực quang, trăng ở xa 160 block. Gợn sóng mưa: quét mặt nước và mặt đất quanh người chơi, vẽ vòng gợn
- * tối đa 150 cái, cộng vệt sáng trên đất ướt (xấp xỉ, không phải phản chiếu thật). Hạt môi trường: bụi
- * sáng, bụi sao, cánh hoa anh đào đọng trên đất vài giây, bông tuyết. Mist/Glass/Bokeh: sương sát đất,
- * tia kính lấp lánh, đốm bokeh mờ. Chroma World nhuộm màu trời qua skyColor, không vẽ thêm gì.
+ * Quy tắc để máy điện thoại mát:
+ *  - Mọi việc đọc block (tìm mặt nước, mặt đất, mái che, điểm chạm của cánh hoa) chỉ chạy trong tick.
+ *    Mỗi tick chỉ kiểm tra tối đa PROBES_PER_TICK tọa độ ngẫu nhiên, ghi vào ring buffer cố định.
+ *  - Hàm vẽ chỉ đọc trạng thái đã tính sẵn, không quét block và không đổi mảng.
+ *  - Tính năng tắt thì hàm vẽ thoát ngay dòng đầu.
+ *  - Mọi lỗi trong tick hoặc vẽ được bắt, tắt riêng phần đó và báo một lần.
  */
 public final class WorldFx {
     public static final int SKY_STYLES = 9;
     public static final int AMBIENCE_STYLES = 4;
     public static final int MIST_STYLES = 3;
-    /** Giới hạn gợn sóng đồng thời, để giữ FPS trên điện thoại */
-    public static final int RIPPLE_MAX = 150;
+    /** Số gợn tối đa, mảng cấp phát một lần */
+    public static final int RIPPLE_MAX = 60;
+    /** Mặc định cho điện thoại */
+    public static final int RIPPLE_DEFAULT = 30;
 
-    /** Khoảng cách vẽ bầu trời, nằm trong tầm xa của camera */
-    private static final double SKY_R = 160.0;
-    /** Nửa cạnh vùng hạt quanh người chơi */
-    private static final double RANGE = 9.0;
-    /** Bán kính quét mặt nước và mặt đất quanh người chơi */
+    /** Số hạt tối đa, cũng là kích thước mảng hạt */
+    private static final int PART_MAX = 50;
+    /** Ngân sách quét: số tọa độ kiểm tra ngẫu nhiên mỗi tick */
+    private static final int PROBES_PER_TICK = 16;
+    private static final int SAMPLE_CAP = 64;
     private static final int SCAN_R = 12;
-    private static final long SCAN_MS = 500L;
-    private static final double RIPPLE_LIFE_MS = 900.0;
-    /** Thời gian một cánh hoa đọng trên đất, rồi mờ dần trong 1 giây */
+    private static final int WET_QUADS = 24;
+    private static final double RANGE = 9.0;
+    private static final long RIPPLE_LIFE_MS = 900L;
+    /** Một tick của game dài 50 ms */
+    private static final double TICK_S = 0.05;
     private static final double LAND_S = 3.0;
     private static final double FADE_S = 1.0;
+    /** Khoảng cách vẽ bầu trời */
+    private static final double SKY_R = 160.0;
 
-    private static final WorldBatch.V UP = new WorldBatch.V(0, 1, 0);
     /** Màu nền trời theo kiểu (chỉ lấy RGB) */
     private static final int[] SKY_COLORS = {
             0xFF0B1030, 0xFF2A0E45, 0xFFE08A52, 0xFF7DBEFF, 0xFF06152A,
             0xFF050818, 0xFF3A0A0A, 0xFF1B2D44, 0xFFF3B8D0
     };
-    private static final int[] AMBIENCE_COUNT = {24, 44, 72};
+    private static final int[] AMBIENCE_COUNT = {20, 35, PART_MAX};
     private static final int[] MIST_COUNT = {8, 16, 26};
 
+    private static final WorldBatch.V UP = new WorldBatch.V(0, 1, 0);
     private static final WorldBatch.V[] STARS = new WorldBatch.V[260];
     private static final WorldBatch.V[] MILKY = new WorldBatch.V[320];
 
@@ -71,22 +75,50 @@ public final class WorldFx {
         }
     }
 
-    /** Hạt môi trường: vị trí, vận tốc, pha, và trạng thái đã đọng trên đất */
-    private static final class Particle {
-        double x, y, z, vx, vy, vz, spin, phase, landedAt;
-        boolean landed;
-    }
-
-    private static final List<Particle> PARTS = new ArrayList<>();
+    // Hạt môi trường: mảng nguyên thủy, cấp phát một lần, không tạo object mỗi khung hình
+    private static final double[] PX = new double[PART_MAX];
+    private static final double[] PY = new double[PART_MAX];
+    private static final double[] PZ = new double[PART_MAX];
+    /** Vị trí ở tick trước, để nội suy mượt khi vẽ */
+    private static final double[] OX = new double[PART_MAX];
+    private static final double[] OY = new double[PART_MAX];
+    private static final double[] OZ = new double[PART_MAX];
+    private static final double[] PVX = new double[PART_MAX];
+    private static final double[] PVY = new double[PART_MAX];
+    private static final double[] PVZ = new double[PART_MAX];
+    private static final double[] PSPIN = new double[PART_MAX];
+    private static final double[] PPHASE = new double[PART_MAX];
+    private static final double[] PLAND_AT = new double[PART_MAX];
+    private static final boolean[] PLANDED = new boolean[PART_MAX];
+    private static int partCount;
     private static int partStyle = -1;
-    /** Gợn sóng đang chạy: x, y, z, mốc thời gian (ms) */
-    private static final List<double[]> RIPPLES = new ArrayList<>();
-    /** Điểm mặt nước và mặt đất quét được gần đây: x, y, z */
-    private static final List<double[]> WATER = new ArrayList<>();
-    private static final List<double[]> GROUND = new ArrayList<>();
-    private static long scanAt = 0L;
-    private static long lastFrame = 0L;
+
+    // Mẫu mặt nước và mặt đất, ghi vòng quanh (ring buffer), đọc khi vẽ
+    private static final double[] WX = new double[SAMPLE_CAP];
+    private static final double[] WY = new double[SAMPLE_CAP];
+    private static final double[] WZ = new double[SAMPLE_CAP];
+    private static final double[] GX = new double[SAMPLE_CAP];
+    private static final double[] GY = new double[SAMPLE_CAP];
+    private static final double[] GZ = new double[SAMPLE_CAP];
+    private static int waterCount;
+    private static int waterHead;
+    private static int groundCount;
+    private static int groundHead;
+
+    // Gợn sóng: mỗi ô có tọa độ và mốc thời gian, mốc 0 nghĩa là ô trống
+    private static final double[] RX = new double[RIPPLE_MAX];
+    private static final double[] RY = new double[RIPPLE_MAX];
+    private static final double[] RZ = new double[RIPPLE_MAX];
+    private static final long[] RT = new long[RIPPLE_MAX];
+    private static int rippleHead;
+    private static float rippleCredit;
+    private static boolean raining;
+
+    /** Con trỏ tái sử dụng cho mọi lần đọc block, không tạo BlockPos mới */
+    private static final BlockPos.Mutable CURSOR = new BlockPos.Mutable();
     private static final Random RNG = new Random();
+    private static boolean brokenTick;
+    private static boolean brokenDraw;
 
     private WorldFx() {}
 
@@ -120,29 +152,231 @@ public final class WorldFx {
         return out;
     }
 
-    /** Vẽ mọi lớp thế giới đang bật. Gọi trong AFTER_TRANSLUCENT, sau khi địa hình đã vẽ. */
-    public static void draw(Matrix4f m, WorldBatch.V cam, MinecraftClient client) {
-        if (client.world == null || client.player == null) return;
+    // ---------- Tick: mọi việc đọc block nằm ở đây ----------
+
+    /** Gọi mỗi tick (20 lần mỗi giây) từ ElaraClient. Không gọi trong hàm vẽ. */
+    public static void tick(MinecraftClient client) {
+        if (brokenTick) return;
+        try {
+            tickInner(client);
+        } catch (Throwable t) {
+            brokenTick = true;
+            partCount = 0;
+            rippleCredit = 0f;
+            raining = false;
+            System.err.println("[Elara] Tắt tính toán Thế giới do lỗi: " + t);
+        }
+    }
+
+    private static void tickInner(MinecraftClient client) {
+        if (client.world == null || client.player == null) {
+            partCount = 0;
+            raining = false;
+            rippleCredit = 0f;
+            return;
+        }
+        if (ElaraConfig.isOn(Feature.RAIN_RIPPLE)) {
+            tickRain(client, client.world);
+        } else {
+            raining = false;
+            rippleCredit = 0f;
+        }
+        if (ElaraConfig.isOn(Feature.AMBIENCE)) {
+            tickParticles(client, client.world);
+        } else {
+            partCount = 0;
+            partStyle = -1;
+        }
+    }
+
+    private static void tickRain(MinecraftClient client, World world) {
+        ElaraConfig.Layout l = ElaraConfig.layout(Feature.RAIN_RIPPLE);
+        raining = world.isRaining() || l.get("force", 0) == 1;
+        if (!raining) {
+            rippleCredit = 0f;
+            return;
+        }
+        probe(world, client.player.getBlockX(), client.player.getBlockY(), client.player.getBlockZ());
+        if (waterCount == 0) return;
+
+        int cap = clamp(l.get("count", RIPPLE_DEFAULT), 5, RIPPLE_MAX);
+        // Tốc độ sinh gợn sao cho khoảng cap gợn sống đủ 0.9 giây
+        rippleCredit += (float) (cap * TICK_S / (RIPPLE_LIFE_MS / 1000.0));
         long now = System.currentTimeMillis();
-        float dt = lastFrame == 0L ? 0.05f : Math.min(0.1f, (now - lastFrame) / 1000f);
-        lastFrame = now;
+        while (rippleCredit >= 1f) {
+            rippleCredit -= 1f;
+            int s = RNG.nextInt(waterCount);
+            int slot = rippleHead % cap;
+            rippleHead = (rippleHead + 1) & 0x3FFFFFFF;
+            RX[slot] = WX[s];
+            RY[slot] = WY[s];
+            RZ[slot] = WZ[s];
+            RT[slot] = now;
+        }
+    }
+
+    /**
+     * Ngân sách quét: kiểm tra PROBES_PER_TICK tọa độ ngẫu nhiên quanh người chơi, dùng chung một BlockPos.
+     * Ghi mặt nước và mặt đất có không khí phía trên và thấy được bầu trời. Dưới mái che thì bỏ qua.
+     */
+    private static void probe(World world, int bx, int by, int bz) {
+        for (int i = 0; i < PROBES_PER_TICK; i++) {
+            int x = bx + RNG.nextInt(2 * SCAN_R + 1) - SCAN_R;
+            int z = bz + RNG.nextInt(2 * SCAN_R + 1) - SCAN_R;
+            int y = by + RNG.nextInt(8) - 4;
+            int dx = x - bx;
+            int dz = z - bz;
+            if (dx * dx + dz * dz > SCAN_R * SCAN_R) continue;
+            CURSOR.set(x, y, z);
+            BlockState s = world.getBlockState(CURSOR);
+            if (s.isAir()) continue;
+            CURSOR.set(x, y + 1, z);
+            if (!world.getBlockState(CURSOR).isAir()) continue;
+            if (!world.isSkyVisible(CURSOR)) continue;
+            if (s.getFluidState().getFluid() == Fluids.WATER) {
+                addWater(x + 0.5, y + 0.88, z + 0.5);
+            } else if (s.getFluidState().isEmpty()) {
+                addGround(x, y + 1.01, z);
+            }
+        }
+    }
+
+    private static void addWater(double x, double y, double z) {
+        WX[waterHead] = x;
+        WY[waterHead] = y;
+        WZ[waterHead] = z;
+        waterHead = (waterHead + 1) % SAMPLE_CAP;
+        if (waterCount < SAMPLE_CAP) waterCount++;
+    }
+
+    private static void addGround(double x, double y, double z) {
+        GX[groundHead] = x;
+        GY[groundHead] = y;
+        GZ[groundHead] = z;
+        groundHead = (groundHead + 1) % SAMPLE_CAP;
+        if (groundCount < SAMPLE_CAP) groundCount++;
+    }
+
+    private static void tickParticles(MinecraftClient client, World world) {
+        ElaraConfig.Layout l = ElaraConfig.layout(Feature.AMBIENCE);
+        int style = clamp(l.get("style", 0), 0, AMBIENCE_STYLES - 1);
+        int target = AMBIENCE_COUNT[clamp(l.get("density", 1), 0, 2)];
+        if (style != partStyle) {
+            partStyle = style;
+            partCount = 0;
+        }
         double px = client.player.getX();
         double py = client.player.getY();
         double pz = client.player.getZ();
+        if (partCount > target) partCount = target;
+        while (partCount < target) {
+            PPHASE[partCount] = RNG.nextDouble() * Math.PI * 2;
+            respawn(partCount, style, px, py, pz);
+            partCount++;
+        }
+        double t = System.currentTimeMillis() / 1000.0;
+        for (int i = 0; i < partCount; i++) {
+            OX[i] = PX[i];
+            OY[i] = PY[i];
+            OZ[i] = PZ[i];
+            step(i, style, world, px, py, pz, t);
+        }
+    }
 
+    /** Đặt lại hạt ở một vị trí ngẫu nhiên quanh người chơi, rơi từ trên cao nếu là cánh hoa hoặc tuyết */
+    private static void respawn(int i, int style, double px, double py, double pz) {
+        PX[i] = px + (RNG.nextDouble() * 2 - 1) * RANGE;
+        PZ[i] = pz + (RNG.nextDouble() * 2 - 1) * RANGE;
+        PLANDED[i] = false;
+        PLAND_AT[i] = 0;
+        PSPIN[i] = RNG.nextDouble() * Math.PI * 2;
+        if (style == 2 || style == 3) {
+            PY[i] = py + 4 + RNG.nextDouble() * 5;
+            PVY[i] = style == 2 ? -0.9 - RNG.nextDouble() * 0.3 : -1.4 - RNG.nextDouble() * 0.4;
+        } else {
+            PY[i] = py - 1 + RNG.nextDouble() * 6;
+            PVY[i] = (RNG.nextDouble() - 0.5) * 0.1;
+        }
+        PVX[i] = (RNG.nextDouble() - 0.5) * 0.25;
+        PVZ[i] = (RNG.nextDouble() - 0.5) * 0.25;
+        OX[i] = PX[i];
+        OY[i] = PY[i];
+        OZ[i] = PZ[i];
+    }
+
+    private static void step(int i, int style, World world, double px, double py, double pz, double t) {
+        if (PLANDED[i]) {
+            PLAND_AT[i] += TICK_S;
+            if (PLAND_AT[i] > LAND_S + FADE_S) respawn(i, style, px, py, pz);
+            return;
+        }
+        switch (style) {
+            case 2 -> {
+                // Cánh hoa rơi xoay, trôi nhẹ theo gió giả. Chạm khối đặc có trời phía trên thì đọng lại.
+                PX[i] += (Math.sin(t * 1.1 + PPHASE[i]) * 0.6 + 0.3) * TICK_S;
+                PZ[i] += Math.cos(t * 0.9 + PPHASE[i]) * 0.4 * TICK_S;
+                PY[i] += PVY[i] * TICK_S;
+                PSPIN[i] += TICK_S * (2.0 + PPHASE[i] * 0.5);
+                if (solidAt(world, PX[i], PY[i], PZ[i])) {
+                    int bx = (int) Math.floor(PX[i]);
+                    int by = (int) Math.floor(PY[i]);
+                    int bz = (int) Math.floor(PZ[i]);
+                    CURSOR.set(bx, by + 1, bz);
+                    if (world.isSkyVisible(CURSOR)) {
+                        PLANDED[i] = true;
+                        PY[i] = by + 1.02;
+                        PLAND_AT[i] = 0;
+                    } else {
+                        respawn(i, style, px, py, pz);
+                    }
+                }
+            }
+            case 3 -> {
+                // Bông tuyết rơi lắc nhẹ, chạm khối đặc thì xuất hiện lại từ trên cao
+                PX[i] += Math.sin(t * 1.5 + PPHASE[i]) * 0.5 * TICK_S;
+                PY[i] += PVY[i] * TICK_S;
+                if (solidAt(world, PX[i], PY[i], PZ[i])) respawn(i, style, px, py, pz);
+            }
+            default -> {
+                // Bụi sáng và bụi sao trôi chậm, lên xuống nhẹ
+                PX[i] += PVX[i] * TICK_S;
+                PZ[i] += PVZ[i] * TICK_S;
+                PY[i] += (PVY[i] + Math.sin(t * 0.8 + PPHASE[i]) * 0.15) * TICK_S;
+            }
+        }
+        if (Math.abs(PX[i] - px) > RANGE || Math.abs(PZ[i] - pz) > RANGE || PY[i] < py - 4 || PY[i] > py + 10) {
+            respawn(i, style, px, py, pz);
+        }
+    }
+
+    /** Khối đặc (không phải không khí, không phải chất lỏng) tại điểm này. Chỉ gọi trong tick. */
+    private static boolean solidAt(World world, double x, double y, double z) {
+        CURSOR.set((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
+        BlockState s = world.getBlockState(CURSOR);
+        return !s.isAir() && s.getFluidState().isEmpty();
+    }
+
+    // ---------- Vẽ: chỉ đọc trạng thái đã tính sẵn ----------
+
+    /** Vẽ mọi lớp thế giới đang bật. Gọi trong AFTER_TRANSLUCENT, sau khi địa hình đã vẽ. */
+    public static void draw(Matrix4f m, WorldBatch.V cam, MinecraftClient client) {
+        if (brokenDraw || client.world == null || client.player == null || !active()) return;
+        try {
+            drawInner(m, cam, client);
+        } catch (Throwable t) {
+            brokenDraw = true;
+            System.err.println("[Elara] Tắt Thế giới sống động do lỗi: " + t);
+        }
+    }
+
+    private static void drawInner(Matrix4f m, WorldBatch.V cam, MinecraftClient client) {
+        long now = System.currentTimeMillis();
         if (ElaraConfig.isOn(Feature.WORLD_SKY)) drawSky(m, cam, now);
-        if (ElaraConfig.isOn(Feature.RAIN_RIPPLE)) {
-            drawRain(m, cam, client, now, dt);
-        } else {
-            RIPPLES.clear();
+        if (ElaraConfig.isOn(Feature.RAIN_RIPPLE) && raining) drawRipples(m, cam, now);
+        if (ElaraConfig.isOn(Feature.AMBIENCE) && partCount > 0) drawAmbience(m, cam, now);
+        if (ElaraConfig.isOn(Feature.MIST_GLASS)) {
+            drawMist(m, cam, now, client.player.getX(), client.player.getY(), client.player.getZ());
         }
-        if (ElaraConfig.isOn(Feature.AMBIENCE)) {
-            drawAmbience(m, cam, client, now, dt, px, py, pz);
-        } else {
-            PARTS.clear();
-            partStyle = -1;
-        }
-        if (ElaraConfig.isOn(Feature.MIST_GLASS)) drawMist(m, cam, now, px, py, pz);
     }
 
     // ---------- Bầu trời ----------
@@ -151,7 +385,6 @@ public final class WorldFx {
         int style = style(Feature.WORLD_SKY, SKY_STYLES);
         double t = now / 1000.0;
         // Một batch cho cả bầu trời: WorldBatch dùng chung Tessellator, hai batch cùng lúc sẽ xung đột.
-        // Sao, mây và mặt trời đều là màu có độ trong suốt nên hòa trộn thường là đủ.
         WorldBatch add = new WorldBatch(m, cam.x(), cam.y(), cam.z(), false);
         WorldBatch norm = add;
         switch (style) {
@@ -244,198 +477,82 @@ public final class WorldFx {
         quadBill(b, c, cam, half, half, argb);
     }
 
-    // ---------- Gợn sóng mưa ----------
+    // ---------- Gợn sóng mưa và mặt đất ướt ----------
 
-    private static void drawRain(Matrix4f m, WorldBatch.V cam, MinecraftClient client, long now, float dt) {
+    /** Vẽ gợn từ mảng RT/RX đã tính ở tick. Mặt đất ướt chỉ vẽ khi bật trong cài đặt. */
+    private static void drawRipples(Matrix4f m, WorldBatch.V cam, long now) {
         ElaraConfig.Layout l = ElaraConfig.layout(Feature.RAIN_RIPPLE);
-        boolean raining = client.world.isRaining() || l.get("force", 0) == 1;
-        if (!raining) {
-            RIPPLES.clear();
-            return;
-        }
-        if (now - scanAt > SCAN_MS) {
-            scan(client);
-            scanAt = now;
-        }
-        int cap = Math.max(10, Math.min(RIPPLE_MAX, l.get("count", 120)));
+        int cap = clamp(l.get("count", RIPPLE_DEFAULT), 5, RIPPLE_MAX);
         int argb = ElaraConfig.color(Feature.RAIN_RIPPLE);
-
-        // Mỗi khung sinh vài gợn tại mặt nước ngẫu nhiên, đủ để giữ khoảng cap gợn đang chạy
-        if (!WATER.isEmpty()) {
-            int spawn = (int) Math.ceil(cap * dt / (RIPPLE_LIFE_MS / 1000.0));
-            for (int i = 0; i < spawn && RIPPLES.size() < cap; i++) {
-                double[] p = WATER.get(RNG.nextInt(WATER.size()));
-                RIPPLES.add(new double[] {p[0], p[1], p[2], now});
-            }
-        }
-        RIPPLES.removeIf(r -> now - r[3] > RIPPLE_LIFE_MS);
-
         WorldBatch ring = new WorldBatch(m, cam.x(), cam.y(), cam.z(), false);
-        for (double[] r : RIPPLES) {
-            double a = (now - r[3]) / RIPPLE_LIFE_MS;
-            if (a < 0 || a > 1) continue;
+        for (int i = 0; i < cap; i++) {
+            if (RT[i] == 0L) continue;
+            long age = now - RT[i];
+            if (age < 0 || age > RIPPLE_LIFE_MS) continue;
+            double a = age / (double) RIPPLE_LIFE_MS;
             double rad = 0.08 + 0.6 * a;
             double thick = 0.03 * (1 - a) + 0.012;
-            ring.ring(new WorldBatch.V(r[0], r[1], r[2]), rad, thick, 12, 0,
+            ring.ring(new WorldBatch.V(RX[i], RY[i], RZ[i]), rad, thick, 10, 0,
                     WorldBatch.withAlpha(argb, (float) (0.85 * (1 - a))));
         }
         ring.flush();
 
-        // Mặt đất ướt: vệt sáng bầu trời lướt nhẹ, mỗi khung lấy ngẫu nhiên vài ô đất quanh người chơi
-        if (l.get("wet", 1) == 1 && !GROUND.isEmpty()) {
-            WorldBatch sheen = new WorldBatch(m, cam.x(), cam.y(), cam.z(), true);
-            double t = now / 1000.0;
-            int samples = Math.min(40, GROUND.size());
-            for (int i = 0; i < samples; i++) {
-                double[] g = GROUND.get(RNG.nextInt(GROUND.size()));
-                double pulse = 0.5 + 0.5 * Math.sin(t * 3 + g[0] * 1.3 + g[2] * 0.7);
-                int c = WorldBatch.withAlpha(0xFFDDEEFF, (float) (0.04 + 0.06 * pulse));
-                flat(sheen, g[0] + 0.5, g[1], g[2] + 0.5, 0.5, 0.5, 0, c);
-            }
-            sheen.flush();
-        }
+        if (l.get("wet", 0) == 1 && groundCount > 0) drawSheen(m, cam, now);
     }
 
-    /** Quét quanh người chơi: mặt nước có không khí phía trên, và mặt đất đặc có không khí phía trên */
-    private static void scan(MinecraftClient client) {
-        WATER.clear();
-        GROUND.clear();
-        World world = client.world;
-        BlockPos base = client.player.getBlockPos();
-        for (int dx = -SCAN_R; dx <= SCAN_R; dx++) {
-            for (int dz = -SCAN_R; dz <= SCAN_R; dz++) {
-                if (dx * dx + dz * dz > SCAN_R * SCAN_R) continue;
-                // Từ trên xuống, chỉ lấy khối cao nhất trong phạm vi có không khí ngay phía trên
-                for (int dy = 3; dy >= -4; dy--) {
-                    BlockPos p = base.add(dx, dy, dz);
-                    BlockState s = world.getBlockState(p);
-                    if (s.isAir()) continue;
-                    if (!world.getBlockState(p.up()).isAir()) break;
-                    double x = p.getX();
-                    double y = p.getY();
-                    double z = p.getZ();
-                    if (s.getFluidState().getFluid() == Fluids.WATER) {
-                        WATER.add(new double[] {x + 0.5, y + 0.88, z + 0.5});
-                    } else if (s.getFluidState().isEmpty()) {
-                        GROUND.add(new double[] {x, y + 1.01, z});
-                    }
-                    break;
-                }
-            }
+    /** Vệt sáng bầu trời lướt nhẹ trên đất ướt, lấy mẫu có chu kỳ từ mảng đã tính */
+    private static void drawSheen(Matrix4f m, WorldBatch.V cam, long now) {
+        WorldBatch sheen = new WorldBatch(m, cam.x(), cam.y(), cam.z(), true);
+        double t = now / 1000.0;
+        int n = Math.min(WET_QUADS, groundCount);
+        for (int i = 0; i < n; i++) {
+            int idx = (int) ((now / 250L + i * 7L) % groundCount);
+            double pulse = 0.5 + 0.5 * Math.sin(t * 3 + GX[idx] * 1.3 + GZ[idx] * 0.7);
+            int c = WorldBatch.withAlpha(0xFFDDEEFF, (float) (0.04 + 0.06 * pulse));
+            flat(sheen, GX[idx] + 0.5, GY[idx], GZ[idx] + 0.5, 0.5, 0.5, 0, c);
         }
+        sheen.flush();
     }
 
     // ---------- Hạt môi trường ----------
 
-    private static void drawAmbience(Matrix4f m, WorldBatch.V cam, MinecraftClient client, long now, float dt,
-                                     double px, double py, double pz) {
+    private static void drawAmbience(Matrix4f m, WorldBatch.V cam, long now) {
         ElaraConfig.Layout l = ElaraConfig.layout(Feature.AMBIENCE);
         int style = clamp(l.get("style", 0), 0, AMBIENCE_STYLES - 1);
-        int target = AMBIENCE_COUNT[clamp(l.get("density", 1), 0, 2)];
-        if (style != partStyle) {
-            PARTS.clear();
-            partStyle = style;
-        }
-        while (PARTS.size() < target) PARTS.add(spawn(style, px, py, pz));
-        while (PARTS.size() > target) PARTS.remove(PARTS.size() - 1);
-
-        World world = client.world;
         int argb = ElaraConfig.color(Feature.AMBIENCE);
         double t = now / 1000.0;
+        float k = PlayerTracker.alpha();
         // Bụi sáng và bụi sao cộng sáng; cánh hoa và tuyết hòa trộn bình thường
         boolean additive = style <= 1;
         WorldBatch b = new WorldBatch(m, cam.x(), cam.y(), cam.z(), additive);
-        for (Particle p : PARTS) {
-            step(p, style, world, px, py, pz, dt, t);
-            drawParticle(b, cam, p, style, argb, t);
+        for (int i = 0; i < partCount; i++) {
+            double x = OX[i] + (PX[i] - OX[i]) * k;
+            double y = OY[i] + (PY[i] - OY[i]) * k;
+            double z = OZ[i] + (PZ[i] - OZ[i]) * k;
+            drawParticle(b, cam, i, x, y, z, style, argb, t);
         }
         b.flush();
     }
 
-    private static Particle spawn(int style, double px, double py, double pz) {
-        Particle p = new Particle();
-        p.phase = RNG.nextDouble() * Math.PI * 2;
-        respawn(p, style, px, py, pz);
-        return p;
-    }
-
-    /** Đặt lại hạt ở một vị trí ngẫu nhiên quanh người chơi, rơi từ trên cao nếu là cánh hoa hoặc tuyết */
-    private static void respawn(Particle p, int style, double px, double py, double pz) {
-        p.x = px + (RNG.nextDouble() * 2 - 1) * RANGE;
-        p.z = pz + (RNG.nextDouble() * 2 - 1) * RANGE;
-        p.landed = false;
-        p.landedAt = 0;
-        p.spin = RNG.nextDouble() * Math.PI * 2;
-        if (style == 2 || style == 3) {
-            p.y = py + 4 + RNG.nextDouble() * 5;
-            p.vy = style == 2 ? -0.9 - RNG.nextDouble() * 0.3 : -1.4 - RNG.nextDouble() * 0.4;
-        } else {
-            p.y = py - 1 + RNG.nextDouble() * 6;
-            p.vy = (RNG.nextDouble() - 0.5) * 0.1;
-        }
-        p.vx = (RNG.nextDouble() - 0.5) * 0.25;
-        p.vz = (RNG.nextDouble() - 0.5) * 0.25;
-    }
-
-    private static void step(Particle p, int style, World world, double px, double py, double pz, float dt, double t) {
-        if (p.landed) {
-            p.landedAt += dt;
-            if (p.landedAt > LAND_S + FADE_S) respawn(p, style, px, py, pz);
-            return;
-        }
-        switch (style) {
-            case 2 -> {
-                // Cánh hoa rơi xoay, trôi nhẹ theo gió giả. Chạm khối đặc thì đọng lại trên mặt đất.
-                p.x += (Math.sin(t * 1.1 + p.phase) * 0.6 + 0.3) * dt;
-                p.z += Math.cos(t * 0.9 + p.phase) * 0.4 * dt;
-                p.y += p.vy * dt;
-                p.spin += dt * (2.0 + p.phase * 0.5);
-                BlockPos bp = BlockPos.ofFloored(p.x, p.y, p.z);
-                BlockState s = world.getBlockState(bp);
-                if (!s.isAir() && s.getFluidState().isEmpty()) {
-                    p.landed = true;
-                    p.y = bp.getY() + 1.02;
-                    p.landedAt = 0;
-                }
-            }
-            case 3 -> {
-                // Bông tuyết rơi lắc nhẹ, chạm đất thì biến mất và xuất hiện lại từ trên cao
-                p.x += Math.sin(t * 1.5 + p.phase) * 0.5 * dt;
-                p.y += p.vy * dt;
-                BlockPos bp = BlockPos.ofFloored(p.x, p.y, p.z);
-                BlockState s = world.getBlockState(bp);
-                if (!s.isAir() && s.getFluidState().isEmpty()) respawn(p, style, px, py, pz);
-            }
-            default -> {
-                // Bụi sáng và bụi sao trôi chậm, lên xuống nhẹ
-                p.x += p.vx * dt;
-                p.z += p.vz * dt;
-                p.y += (p.vy + Math.sin(t * 0.8 + p.phase) * 0.15) * dt;
-            }
-        }
-        if (Math.abs(p.x - px) > RANGE || Math.abs(p.z - pz) > RANGE || p.y < py - 4 || p.y > py + 10) {
-            respawn(p, style, px, py, pz);
-        }
-    }
-
-    private static void drawParticle(WorldBatch b, WorldBatch.V cam, Particle p, int style, int argb, double t) {
-        WorldBatch.V c = new WorldBatch.V(p.x, p.y, p.z);
+    private static void drawParticle(WorldBatch b, WorldBatch.V cam, int i, double x, double y, double z,
+                                     int style, int argb, double t) {
+        WorldBatch.V c = new WorldBatch.V(x, y, z);
         switch (style) {
             case 0 -> {
-                float tw = (float) (0.6 + 0.4 * Math.sin(t * 2 + p.phase));
+                float tw = (float) (0.6 + 0.4 * Math.sin(t * 2 + PPHASE[i]));
                 quadBill(b, c, cam, 0.035, 0.035, WorldBatch.withAlpha(argb, 0.7f * tw));
             }
             case 1 -> {
-                float tw = (float) (0.5 + 0.5 * Math.sin(t * 3 + p.phase));
-                int col = 0xFF000000 | ColorMath.hsbToRgb((float) ((t * 0.15 + p.phase / 6.283) % 1.0), 0.45f, 1f);
+                float tw = (float) (0.5 + 0.5 * Math.sin(t * 3 + PPHASE[i]));
+                int col = 0xFF000000 | ColorMath.hsbToRgb((float) ((t * 0.15 + PPHASE[i] / 6.283) % 1.0), 0.45f, 1f);
                 quadBill(b, c, cam, 0.03, 0.03, WorldBatch.withAlpha(col, 0.5f + 0.5f * tw));
             }
             case 2 -> {
-                if (p.landed) {
-                    float fade = (float) Math.max(0, 1 - Math.max(0, p.landedAt - LAND_S) / FADE_S);
-                    flat(b, p.x, p.y, p.z, 0.09, 0.07, p.phase, WorldBatch.withAlpha(argb, 0.9f * fade));
+                if (PLANDED[i]) {
+                    float fade = (float) Math.max(0, 1 - Math.max(0, PLAND_AT[i] - LAND_S) / FADE_S);
+                    flat(b, x, y, z, 0.09, 0.07, PPHASE[i], WorldBatch.withAlpha(argb, 0.9f * fade));
                 } else {
-                    double hw = 0.09 * Math.abs(Math.cos(p.spin)) + 0.012;
+                    double hw = 0.09 * Math.abs(Math.cos(PSPIN[i])) + 0.012;
                     quadBill(b, c, cam, hw, 0.07, WorldBatch.withAlpha(argb, 0.95f));
                 }
             }

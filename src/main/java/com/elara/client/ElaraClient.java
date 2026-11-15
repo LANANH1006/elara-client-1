@@ -16,6 +16,10 @@ import com.elara.client.fx.BuildGuide;
 import com.elara.client.fx.PlayerMotion;
 import com.elara.client.fx.HitFx;
 import com.elara.client.fx.KnifeAnim;
+import com.elara.client.fx.SoftShadow;
+import com.elara.client.fx.WorldFx;
+import com.elara.client.ui.ChatKeyboard;
+import net.minecraft.client.gui.screen.ChatScreen;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
 import com.elara.client.i18n.Lang;
@@ -78,6 +82,9 @@ public class ElaraClient implements ClientModInitializer {
             PlayerMotion.tick(client);
             BuildGuide.tick(client);
             KnifeAnim.tick(client);
+            // Tính toán thế giới và bóng: có try/catch riêng, mọi việc đọc block nằm trong tick
+            WorldFx.tick(client);
+            SoftShadow.tick(client);
             while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
             HitFx.tick();
             CombatFx.tick(client);
@@ -134,6 +141,11 @@ public class ElaraClient implements ClientModInitializer {
                     .dimensions(sw - 80, sh - 26, 70, 20)
                     .build();
             Screens.getButtons(screen).add(scene);
+        });
+
+        // Bàn phím ảo và thanh nút nhanh trên màn hình chat (tính năng Chat Touch)
+        ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
+            if (screen instanceof ChatScreen) ChatKeyboard.attach(screen);
         });
 
         // Đánh trúng thực thể: tạo hiệu ứng tại vị trí mục tiêu (không chặn hành động)

@@ -54,6 +54,19 @@ public final class TexBatch {
         vertex(d, 0f, v1, argb, n);
     }
 
+    /**
+     * Quad có texture, mỗi đỉnh tự cho (u, v). Dùng cho tấm cánh liền khối: các ô lưới có toạ độ riêng.
+     * Thứ tự đỉnh a, b, c, d phải đi vòng quanh như quad() để mặt hướng đúng.
+     */
+    public void quadUv(WorldBatch.V a, WorldBatch.V b, WorldBatch.V c, WorldBatch.V d,
+                       float ua, float va, float ub, float vb, float uc, float vc, float ud, float vd,
+                       int argb, WorldBatch.V n) {
+        vertex(a, ua, va, argb, n);
+        vertex(b, ub, vb, argb, n);
+        vertex(c, uc, vc, argb, n);
+        vertex(d, ud, vd, argb, n);
+    }
+
     /** Vẽ toàn bộ quad đã gom. Không có gì để vẽ thì bỏ qua. */
     public void flush() {
         if (buf == null) return;

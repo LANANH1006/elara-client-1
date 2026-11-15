@@ -49,12 +49,14 @@ public enum Feature {
     RAIN_RIPPLE(Group.WORLD),
     CHROMA_WORLD(Group.WORLD),
     MIST_GLASS(Group.WORLD),
+    SOFT_SHADOW(Group.WORLD),
 
     MUSIC_PLAYER(Group.MISC),
     LYRICS_ISLAND(Group.MISC),
     KEYSTROKES(Group.MISC),
     SYSINFO(Group.MISC),
     BADGE(Group.MISC),
+    CHAT_TOUCH(Group.MISC),
 
     BUILD_GUIDE(Group.BUILDER);
 

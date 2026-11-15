@@ -51,6 +51,29 @@ public final class LagFix {
         return false;
     }
 
+    /** Nhóm tính năng của chế độ giảm lag tối đa, bật tắt bằng nút Fix Lag trên thanh chat */
+    private static final Feature[] MAX_SET = {
+            Feature.LAG_RENDER, Feature.LAG_ENTITIES, Feature.LAG_PARTICLES,
+            Feature.LAG_CLOUDS, Feature.LAG_BLOCK_ENTITIES, Feature.LAG_GPU_SAVER
+    };
+
+    /** Có tính năng nào trong nhóm giảm lag tối đa đang bật không */
+    public static boolean maxOn() {
+        for (Feature f : MAX_SET) {
+            if (ElaraConfig.isOn(f)) return true;
+        }
+        return false;
+    }
+
+    /** Bật cả nhóm giảm lag tối đa, hoặc tắt cả nhóm nếu đang bật. Các tính năng khác giữ nguyên. */
+    public static void toggleMax(MinecraftClient client) {
+        boolean turnOn = !maxOn();
+        for (Feature f : MAX_SET) {
+            if (ElaraConfig.isOn(f) != turnOn) ElaraConfig.toggle(f);
+        }
+        sync(client);
+    }
+
     /** Gọi khi bật/tắt một tính năng Fix Lag, khi đổi thông số, khi đổi focus cửa sổ, và lúc khởi động */
     public static void sync(MinecraftClient client) {
         GameOptions opts = client.options;

@@ -3,20 +3,26 @@ package com.elara.client.fx;
 import com.elara.client.core.ElaraAssets;
 import com.elara.client.core.ElaraConfig;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
 
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Cánh ảo nhiều lớp lông vũ, vẽ bằng texture lông vũ thật (wings_feather.png, RGBA 256x256).
- * Khung xương có 4 khớp (vai, khuỷu, cổ tay, chóp), tức 3 đốt. Mỗi khớp vỗ lệch pha so với khớp trước,
- * biên độ tăng dần ra đầu cánh. Cánh vòm lên ở giữa và vuốt nhọn ra sau ở chóp, kiểu seraphim.
- * Kiểu: 0 thiên thần, 1 rồng (mép răng cưa), 2 bướm (một lớp, có đốm), 3 cyber (khung dây sáng),
- * 4 quạ đen (lông đen, khói bay lên). Trạng thái vỗ, xòe, thu, ẩn lấy từ PlayerMotion.
+ * Cánh ảo. Có sáu kiểu: 0 thiên thần, 1 rồng (mép răng cưa), 2 bướm (một lớp, có đốm), 3 cyber (khung dây sáng),
+ * 4 quạ đen (lông đen, khói bay lên), 5 tinh vân phát sáng (một tấm cánh liền khối có texture sinh bằng Python).
+ *
+ * Kiểu 0 đến 4 vẽ từng lông bằng texture wings_feather.png. Kiểu 5 vẽ một lưới SHEET_S x SHEET_T ô,
+ * texture wings_galaxy.png ánh xạ theo (sải, dây cung) nên các lông liền thành một mặt cánh.
+ *
+ * Cánh gắn vào thân: theo bodyYaw (góc thân, không theo góc nhìn đầu), hạ thấp và ngả về trước khi cúi.
+ * Ở góc nhìn thứ nhất không vẽ cánh của chính mình, để cánh không chĩa xuyên màn hình.
  */
 public final class Wings {
-    public static final int STYLES = 5;
+    public static final int STYLES = 6;
+    /** Kiểu tinh vân: tấm cánh liền khối */
+    private static final int STYLE_GALAXY = 5;
     private static final int SEC = 4;
     /** Vị trí các khớp dọc theo cánh: 0 vai, 1 khuỷu, 2 cổ tay, 3 chóp */
     private static final double[] JOINT_U = {0.0, 0.36, 0.70, 1.0};
@@ -24,8 +30,14 @@ public final class Wings {
     private static final double ARM_LEN = 1.45;
     /** Gốc cánh ở độ cao vai, tính từ chân người chơi */
     private static final double ROOT_Y = 1.40;
-    /** Gốc cánh lùi ra sau thân để không xuyên qua áo choàng */
-    private static final double ROOT_BACK = 0.18;
+    /** Gốc cánh lùi ra sau thân, cách mặt lưng 0.16 block để không chạm áo choàng */
+    private static final double ROOT_BACK = 0.16;
+    /** Khi cúi: gốc cánh hạ xuống và ngả về trước */
+    private static final double SNEAK_SINK = 0.30;
+    private static final double SNEAK_FORWARD = 0.05;
+    /** Số ô lưới của tấm cánh tinh vân: theo sải và theo dây cung */
+    private static final int SHEET_S = 8;
+    private static final int SHEET_T = 3;
     private static final WorldBatch.V UP = new WorldBatch.V(0, 1, 0);
 
     /** Cách một kiểu cánh trông thế nào */
@@ -43,10 +55,14 @@ public final class Wings {
         int speed = clamp(l.get("speed", 5), 1, 10);
         double t = System.currentTimeMillis() / 1000.0;
         Look look = look(style, argb);
+        Identifier tex = style == STYLE_GALAXY ? ElaraAssets.WING_GALAXY : ElaraAssets.WING_FEATHER;
         WorldBatch wb = new WorldBatch(mat, cam.x(), cam.y(), cam.z(), true);
-        TexBatch tb = new TexBatch(mat, cam.x(), cam.y(), cam.z(), ElaraAssets.WING_FEATHER);
+        TexBatch tb = new TexBatch(mat, cam.x(), cam.y(), cam.z(), tex);
+        boolean firstPerson = client.options.getPerspective().isFirstPerson();
 
         for (Map.Entry<UUID, PlayerTracker.Track> e : PlayerTracker.tracks().entrySet()) {
+            // Góc nhìn thứ nhất: không vẽ cánh của chính mình
+            if (firstPerson && client.player != null && e.getKey().equals(client.player.getUuid())) continue;
             PlayerTracker.Track tr = e.getValue();
             double px = PlayerTracker.lerp(tr.px, tr.x, a);
             double py = PlayerTracker.lerp(tr.py, tr.y, a);
@@ -55,22 +71,65 @@ public final class Wings {
             PlayerMotion.State m = PlayerMotion.get(e.getKey());
             if (m == null || m.hidden) continue;
 
-            double yr = Math.toRadians(tr.yaw);
-            // Quy ước của Minecraft: phải = (-cos, -sin), sau = (sin, -cos)
+            // Quy ước của Minecraft: phải = (-cos, -sin), sau = (sin, -cos). Theo góc thân, nội suy mượt.
+            double yr = Math.toRadians(lerpDeg(tr.prevBodyYaw, tr.bodyYaw, a));
             WorldBatch.V right = new WorldBatch.V(-Math.cos(yr), 0, -Math.sin(yr));
             WorldBatch.V back = new WorldBatch.V(Math.sin(yr), 0, -Math.cos(yr));
-            WorldBatch.V root = new WorldBatch.V(px, py + ROOT_Y, pz).add(back.mul(ROOT_BACK));
+            double sink = tr.sneaking ? SNEAK_SINK : 0.0;
+            double fwd = tr.sneaking ? SNEAK_FORWARD : 0.0;
+            WorldBatch.V root = new WorldBatch.V(px, py + ROOT_Y - sink, pz).add(back.mul(ROOT_BACK - fwd));
 
             // Vỗ: chậm khi đứng yên, nhịp nhanh hơn khi đi, tốc độ chỉnh được
             double freq = m.moving ? 2.0 + speed * 0.25 : 0.8;
             double phase = t * Math.PI * 2 * freq;
             for (int side = -1; side <= 1; side += 2) {
-                drawWing(wb, tb, look, root, right.mul(side), back, size, m.spread, m.fold, m.flap,
-                        phase, t, cam, style);
+                WorldBatch.V span = right.mul(side);
+                if (style == STYLE_GALAXY) {
+                    drawSheet(tb, root, span, back, size, m.spread, m.fold, m.flap, phase, t, look.base());
+                } else {
+                    drawWing(wb, tb, look, root, span, back, size, m.spread, m.fold, m.flap,
+                            phase, t, cam, style);
+                }
             }
         }
         wb.flush();
         tb.flush();
+    }
+
+    /**
+     * Tấm cánh liền khối cho kiểu tinh vân. Lưới (SHEET_S+1) x (SHEET_T+1) điểm. Điểm (s, t) nằm trên
+     * đường gốc cánh theo s, lùi về sau theo dây cung theo t. Texture có alpha cắt đúng hình cánh.
+     */
+    private static void drawSheet(TexBatch tb, WorldBatch.V root, WorldBatch.V span, WorldBatch.V back,
+                                  double size, float spread, float fold, float amp, double phase, double t,
+                                  int tint) {
+        WorldBatch.V[][] p = new WorldBatch.V[SHEET_S + 1][SHEET_T + 1];
+        for (int i = 0; i <= SHEET_S; i++) {
+            double s = i / (double) SHEET_S;
+            double lateral = size * ARM_LEN * (0.35 + 0.65 * spread) * s;
+            double lift = size * (0.28 * spread * Math.sin(Math.PI * s * 0.8) + 0.45 * spread * s * s * s);
+            double wave = amp * Math.sin(phase - s * 2.7) * s * size * 0.9;
+            double backOff = size * (0.10 * s * s + 0.22 * fold * s + 0.20 * spread * s * s);
+            WorldBatch.V base = root.add(span.mul(lateral)).add(UP.mul(lift + wave)).add(back.mul(backOff));
+            // Dây cung dài dần ra chóp, hạ xuống và lùi về sau
+            double chordLen = size * (0.35 + 0.65 * s) * (0.6 + 0.4 * spread);
+            WorldBatch.V chord = back.mul(chordLen * 0.9).add(UP.mul(-chordLen * 0.35));
+            for (int j = 0; j <= SHEET_T; j++) {
+                p[i][j] = base.add(chord.mul(j / (double) SHEET_T));
+            }
+        }
+        // Màu nhấp nháy nhẹ theo thời gian, cả tấm cùng một màu
+        int col = WorldBatch.withAlpha(tint, (float) (0.85 + 0.15 * Math.sin(t * 2.0)));
+        for (int i = 0; i < SHEET_S; i++) {
+            for (int j = 0; j < SHEET_T; j++) {
+                float u0 = i / (float) SHEET_S;
+                float u1 = (i + 1) / (float) SHEET_S;
+                float v0 = j / (float) SHEET_T;
+                float v1 = (j + 1) / (float) SHEET_T;
+                tb.quadUv(p[i][j], p[i + 1][j], p[i + 1][j + 1], p[i][j + 1],
+                        u0, v0, u1, v0, u1, v1, u0, v1, col, UP);
+            }
+        }
     }
 
     private static void drawWing(WorldBatch wb, TexBatch tb, Look look, WorldBatch.V root, WorldBatch.V span,
@@ -100,7 +159,6 @@ public final class Wings {
         }
 
         // Bốn lớp, từ ngoài vào trong. back dương nghĩa là lông xòe ra sau lưng.
-        // Lớp chính (đuôi cánh), lớp phụ, lớp che, lớp lót sát thân: phủ kín mặt cánh.
         double[][] layers = {
                 {1.0, -0.12, 0.22, 1.0},
                 {0.85, 0.22, 0.10, 0.80},
@@ -195,12 +253,20 @@ public final class Wings {
                     0.18, 1.0, false, true, false, false, false);
             case 4 -> new Look(mix(argb, 0xFF000000, 0.6f), WorldBatch.withAlpha(mix(argb, 0xFF000000, 0.6f), 0.45f),
                     0.28, 1.1, false, false, true, false, false);
+            case STYLE_GALAXY -> new Look(argb, WorldBatch.withAlpha(argb, 0.5f),
+                    0.0, 1.0, false, false, false, false, false);
             default -> new Look(mix(argb, 0xFFFFFFFF, 0.45f), WorldBatch.withAlpha(argb, 0.5f),
                     0.28, 1.0, false, false, false, false, false);
         };
     }
 
     // ---------- toán và màu ----------
+
+    /** Nội suy góc độ theo đường ngắn nhất, không nhảy qua 0 khi quay quanh 360 độ */
+    private static double lerpDeg(double a, double b, double t) {
+        double d = ((b - a) % 360.0 + 540.0) % 360.0 - 180.0;
+        return a + d * t;
+    }
 
     private static WorldBatch.V cross(WorldBatch.V a, WorldBatch.V o) {
         return new WorldBatch.V(a.y() * o.z() - a.z() * o.y(),

@@ -35,6 +35,8 @@ public final class PlayerArm {
         WorldBatch.V elbow = wrist.add(axis.mul(LENGTH));
 
         WorldBatch b = new WorldBatch(m.peek().getPositionMatrix(), 0, 0, 0, false);
+        // Nắm tay ôm chuôi dao: khối ngắn quanh cổ tay, phủ phần đuôi cán
+        tube(b, axis.mul(-0.06), 0.052, axis.mul(0.02), 0.056, p, q, SKIN);
         tube(b, wrist, 0.040, mid, 0.050, p, q, SKIN);
         tube(b, mid, 0.050, elbow, 0.062, p, q, SLEEVE);
         b.flush();

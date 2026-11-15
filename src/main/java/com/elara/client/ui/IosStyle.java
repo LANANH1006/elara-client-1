@@ -9,6 +9,9 @@ import java.util.Map;
 /**
  * Bảng màu và hàm vẽ kiểu iOS. Kính mờ là lớp xám bán trong suốt có viền sáng 1px.
  * Không dùng shader blur, nên phần làm mờ cảnh phía sau vẫn chưa có.
+ *
+ * Số lệnh fill: các dòng liên tiếp có cùng độ lõm góc được gộp thành một lệnh. Hình đặc gộp cả cạnh thẳng.
+ * Gradient gộp tối đa GRADIENT_GROUP dòng, màu lấy ở giữa nhóm. Mắt khó thấy khác biệt ở độ chuyển này.
  */
 public final class IosStyle {
     public static final int GLASS = 0x9E3A3A3C;       // kính xám, alpha khoảng 0.62
@@ -21,6 +24,8 @@ public final class IosStyle {
     public static final int TEXT = 0xFFFFFFFF;
     public static final int TEXT_DIM = 0xFF9A9AA0;
 
+    /** Số dòng tối đa gộp chung một màu gradient */
+    private static final int GRADIENT_GROUP = 3;
     /** Tốc độ trượt của công tắc, càng lớn càng nhanh */
     private static final float SWITCH_SPEED = 12f;
 
@@ -38,38 +43,46 @@ public final class IosStyle {
 
     private IosStyle() {}
 
-    /** Hình chữ nhật bo góc, vẽ bằng cách tô từng dòng pixel */
+    /** Hình chữ nhật bo góc, màu đặc */
     public static void rounded(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
-        int r = Math.min(radius, Math.min(w, h) / 2);
-        for (int row = 0; row < h; row++) {
-            double cy = row + 0.5;
-            double dist = Math.min(cy, h - cy);
-            int inset = 0;
-            if (dist < r) {
-                inset = (int) Math.round(r - Math.sqrt((double) r * r - (r - dist) * (r - dist)));
-            }
-            int x1 = x + inset;
-            int x2 = x + w - inset;
-            if (x2 > x1) ctx.fill(x1, y + row, x2, y + row + 1, fadeColor(color));
-        }
+        fillRows(ctx, x, y, w, h, radius, color, color);
     }
 
     /** Hình bo góc có màu chuyển dọc từ {@code top} xuống {@code bottom} */
     private static void roundedGradient(DrawContext ctx, int x, int y, int w, int h, int radius, int top, int bottom) {
+        fillRows(ctx, x, y, w, h, radius, top, bottom);
+    }
+
+    /**
+     * Tô hình bo góc theo dòng, gộp các dòng liên tiếp cùng độ lõm để giảm số lệnh fill.
+     * Màu đặc (top == bottom) gộp không giới hạn số dòng, gradient gộp tối đa GRADIENT_GROUP dòng.
+     */
+    private static void fillRows(DrawContext ctx, int x, int y, int w, int h, int radius, int top, int bottom) {
+        if (w <= 0 || h <= 0) return;
         int r = Math.min(radius, Math.min(w, h) / 2);
-        for (int row = 0; row < h; row++) {
-            double cy = row + 0.5;
-            double dist = Math.min(cy, h - cy);
-            int inset = 0;
-            if (dist < r) {
-                inset = (int) Math.round(r - Math.sqrt((double) r * r - (r - dist) * (r - dist)));
-            }
+        boolean flat = top == bottom;
+        int limit = flat ? h : GRADIENT_GROUP;
+        int row = 0;
+        while (row < h) {
+            int inset = insetAt(row, h, r);
+            int end = row + 1;
+            while (end < h && end - row < limit && insetAt(end, h, r) == inset) end++;
             int x1 = x + inset;
             int x2 = x + w - inset;
-            if (x2 <= x1) continue;
-            int c = lerpColor(top, bottom, row / (float) Math.max(1, h - 1));
-            ctx.fill(x1, y + row, x2, y + row + 1, fadeColor(c));
+            if (x2 > x1) {
+                int c = flat ? top : lerpColor(top, bottom, (row + (end - row) * 0.5f) / Math.max(1, h - 1));
+                ctx.fill(x1, y + row, x2, y + end, fadeColor(c));
+            }
+            row = end;
         }
+    }
+
+    /** Độ lõm góc của một dòng: 0 ở phần thẳng, lớn hơn 0 ở hai đầu cong */
+    private static int insetAt(int row, int h, int r) {
+        double cy = row + 0.5;
+        double dist = Math.min(cy, h - cy);
+        if (dist >= r) return 0;
+        return (int) Math.round(r - Math.sqrt((double) r * r - (r - dist) * (r - dist)));
     }
 
     /**

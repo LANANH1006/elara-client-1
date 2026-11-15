@@ -148,7 +148,7 @@ public class FeatureSettingsScreen extends Screen {
             case VIRTUAL_WINGS -> {
                 String[] styles = {
                         Lang.get("wing.angel"), Lang.get("wing.dragon"),
-                        Lang.get("wing.butterfly"), Lang.get("wing.cyber")
+                        Lang.get("wing.butterfly"), Lang.get("wing.cyber"), Lang.get("wing.galaxy")
                 };
                 list.add(new Ctl(Lang.get("set.wing_style"), "", 0, styles.length - 1,
                         l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
@@ -225,13 +225,14 @@ public class FeatureSettingsScreen extends Screen {
                         l -> l.get("density", 1), (l, v) -> l.put("density", v), levels()));
             }
             case RAIN_RIPPLE -> {
-                list.add(slider(Lang.get("set.ripple_count"), "", 10, WorldFx.RIPPLE_MAX, "count", 120));
+                list.add(slider(Lang.get("set.ripple_count"), "", 10, WorldFx.RIPPLE_MAX, "count", WorldFx.RIPPLE_DEFAULT));
                 list.add(new Ctl(Lang.get("set.wet_ground"), "", 0, 1,
-                        l -> l.get("wet", 1), (l, v) -> l.put("wet", v), onOff()));
+                        l -> l.get("wet", 0), (l, v) -> l.put("wet", v), onOff()));
                 list.add(new Ctl(Lang.get("set.rain_force"), "", 0, 1,
                         l -> l.get("force", 0), (l, v) -> l.put("force", v),
                         new String[] {Lang.get("rain.when_rain"), Lang.get("rain.always")}));
             }
+            case SOFT_SHADOW -> list.add(slider(Lang.get("set.shadow_strength"), "%", 10, 100, "strength", 45));
             case CHROMA_WORLD -> list.add(slider(Lang.get("set.tint_strength"), "%", 0, 100, "strength", 35));
             case MIST_GLASS -> {
                 String[] kinds = {Lang.get("mist.mist"), Lang.get("mist.glass"), Lang.get("mist.bokeh")};

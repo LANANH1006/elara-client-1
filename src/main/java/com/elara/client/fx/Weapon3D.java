@@ -32,8 +32,8 @@ public final class Weapon3D {
     /** Dao CS2 phóng to 2.6 lần so với mô hình gốc */
     private static final double KNIFE_SCALE = 2.6;
     /** Nửa độ dày lưỡi dao và katana, đơn vị gốc */
-    private static final double KNIFE_HALF = 0.006;
-    private static final double KATANA_HALF = 0.003;
+    private static final double KNIFE_HALF = 0.0075;
+    private static final double KATANA_HALF = 0.0035;
     /** Mốc từ mixin chỉ có hiệu lực trong khoảng này, tránh vẽ lặp sang khung hình sau */
     private static final long THIRD_PERSON_MAX_AGE_NS = 60_000_000L;
 
@@ -163,7 +163,10 @@ public final class Weapon3D {
         m.push();
         try {
             // Vị trí tay cầm trong khung nhìn thứ nhất, theo applyEquipOffset của game
-            m.translate(0.56f * side, -0.16f - equip * 0.6f, -0.72f);
+            // Gần tâm hơn một chút và thấp hơn: cán nằm ở góc dưới phải, lưỡi chéo vào giữa màn hình
+            m.translate(0.50f * side, -0.20f - equip * 0.6f, -0.66f);
+            // Giật lùi nhẹ khi chém: đẩy tay về phía trước theo nhịp vung của tay
+            m.translate(0f, 0f, -0.05f * (float) Math.sin(Math.sqrt(swing) * Math.PI));
             applySwing(m, side, swing);
 
             // Cánh tay vẽ trước, vũ khí vẽ sau để lưỡi không bị tay che
@@ -193,7 +196,7 @@ public final class Weapon3D {
             solid.flush();
             drawAdditive(mat, 0, 0, 0, null, s, tier, glint, pulse, axis, 0);
             return true;
-        } catch (RuntimeException ex) {
+        } catch (Throwable ex) {
             broken = true;
             System.err.println("[Elara] Tắt Vũ khí 3D do lỗi: " + ex);
             return false;
@@ -282,7 +285,7 @@ public final class Weapon3D {
             paintSolid(new Canvas(solid, pose, s, 1f).spin(axis, flip), tier);
             solid.flush();
             drawAdditive(new Matrix4f(), c.x, c.y, c.z, pose, s, tier, glint, pulse(), axis, flip);
-        } catch (RuntimeException ex) {
+        } catch (Throwable ex) {
             broken = true;
             System.err.println("[Elara] Tắt Vũ khí 3D ở góc nhìn thứ ba do lỗi: " + ex);
         }
@@ -405,7 +408,7 @@ public final class Weapon3D {
             case STONE -> {
                 blade(c, FLIP_BLADE, KNIFE_HALF, 0xFF9AA4B0);
                 // Vòng flipper quanh trục xoay ở sống dao
-                torus(c, L(-0.035, -0.014, 0), 0.030, 0.007, 20, 8, 0xFF5C6673);
+                torus(c, L(-0.035, -0.014, 0), 0.030, 0.009, 20, 8, 0xFF5C6673);
                 // Cán gập: hai nửa tách nhau bởi khe, có chốt xoay ở giữa
                 box(c, -0.12, 0.0, 0.046, 0.062, -0.010, 0.010, 0xFF2B3138);
                 box(c, -0.12, 0.0, -0.018, 0.0, -0.010, 0.010, 0xFF2B3138);
@@ -442,7 +445,7 @@ public final class Weapon3D {
             case DIAMOND -> {
                 blade(c, KARAMBIT_BLADE, KNIFE_HALF, 0xFF7FE3F0);
                 // Vòng xỏ ngón to, nối với cán bằng một thanh
-                torus(c, L(-0.075, -0.050, 0), 0.042, 0.010, 22, 8, 0xFF3E5566);
+                torus(c, L(-0.075, -0.050, 0), 0.042, 0.013, 22, 8, 0xFF3E5566);
                 box(c, -0.10, -0.06, -0.050, -0.004, -0.008, 0.008, 0xFF1F2A33);
                 // Cán công thái học
                 box(c, -0.12, 0.0, -0.004, 0.030, -0.010, 0.010, 0xFF1F2A33);
@@ -556,6 +559,12 @@ public final class Weapon3D {
         strip(c, bl, bl.lo(), bl.hi(), 1, -half, argb);
         edge(c, bl, bl.lo(), half, -half, wall);
         edge(c, bl, bl.hi(), half, -half, wall);
+        // Vát cạnh sắc: dải sáng dọc mép lưỡi trên cả hai mặt, tạo khác biệt mặt sáng và mặt tối
+        int bright = lighten(argb, 0.35f);
+        double[] cut = new double[bl.hi().length];
+        for (int i = 0; i < cut.length; i++) cut[i] = bl.hi()[i] - 0.0035;
+        strip(c, bl, cut, bl.hi(), 1, half + 0.0004, bright);
+        strip(c, bl, cut, bl.hi(), 1, -half - 0.0004, bright);
     }
 
     /** Khối hộp: mặt trước và sau theo z, bốn mặt bên tối hơn */
@@ -615,6 +624,15 @@ public final class Weapon3D {
         double ring = major + minor * Math.cos(p);
         return center.add(DIR.mul(Math.cos(a) * ring)).add(SIDE.mul(Math.sin(a) * ring))
                 .add(NORM.mul(minor * Math.sin(p)));
+    }
+
+    /** Làm sáng màu về phía trắng, f từ 0 đến 1 */
+    private static int lighten(int argb, float f) {
+        int a = (argb >>> 24) & 0xFF;
+        int r = (int) (((argb >> 16) & 0xFF) + (255 - ((argb >> 16) & 0xFF)) * f);
+        int g = (int) (((argb >> 8) & 0xFF) + (255 - ((argb >> 8) & 0xFF)) * f);
+        int b = (int) ((argb & 0xFF) + (255 - (argb & 0xFF)) * f);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private static int darken(int argb, float f) {
