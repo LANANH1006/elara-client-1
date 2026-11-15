@@ -53,6 +53,7 @@ public enum Feature {
 
     MUSIC_PLAYER(Group.MISC),
     LYRICS_ISLAND(Group.MISC),
+    LYRICS_SKY(Group.MISC),
     KEYSTROKES(Group.MISC),
     SYSINFO(Group.MISC),
     BADGE(Group.MISC),

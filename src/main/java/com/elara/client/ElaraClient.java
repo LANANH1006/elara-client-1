@@ -19,6 +19,8 @@ import com.elara.client.fx.KnifeAnim;
 import com.elara.client.fx.SoftShadow;
 import com.elara.client.fx.WorldFx;
 import com.elara.client.ui.ChatKeyboard;
+import com.elara.client.skin.SkinStore;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.gui.screen.ChatScreen;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
@@ -85,6 +87,9 @@ public class ElaraClient implements ClientModInitializer {
             // Tính toán thế giới và bóng: có try/catch riêng, mọi việc đọc block nằm trong tick
             WorldFx.tick(client);
             SoftShadow.tick(client);
+            // Tự động lưu cấu hình (kiểm tra mỗi 20 tick, ghi ở luồng phụ) và nhận skin tải về
+            ElaraConfig.tick();
+            SkinStore.tickMain();
             while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
             HitFx.tick();
             CombatFx.tick(client);
@@ -155,6 +160,12 @@ public class ElaraClient implements ClientModInitializer {
             }
             CombatFx.onAttack(player, entity);
             return ActionResult.PASS;
+        });
+
+        // Khi game tắt: ghi đồng bộ cấu hình và nét vẽ skin, để không mất thay đổi cuối cùng
+        ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {
+            ElaraConfig.flushNow();
+            SkinStore.flushNow();
         });
     }
 }

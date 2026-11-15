@@ -1,5 +1,7 @@
 package com.elara.client.fx;
 
+import com.elara.client.core.Guard;
+
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import net.minecraft.block.BlockState;
@@ -45,6 +47,7 @@ public final class SoftShadow {
         try {
             tickInner(client);
         } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
             broken = true;
             count = 0;
             System.err.println("[Elara] Tắt Bóng mềm do lỗi: " + t);

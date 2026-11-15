@@ -23,6 +23,7 @@
     "BlockEntityRenderMixin",
     "EntityRendererBadgeMixin",
     "PlayerListHudMixin",
-    "ClientWorldSkyMixin"
+    "ClientWorldSkyMixin",
+    "AbstractClientPlayerEntityMixin"
   ]
 }

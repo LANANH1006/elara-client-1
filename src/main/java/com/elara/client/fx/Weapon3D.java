@@ -1,5 +1,7 @@
 package com.elara.client.fx;
 
+import com.elara.client.core.Guard;
+
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import net.minecraft.client.MinecraftClient;
@@ -34,6 +36,11 @@ public final class Weapon3D {
     /** Nửa độ dày lưỡi dao và katana, đơn vị gốc */
     private static final double KNIFE_HALF = 0.0075;
     private static final double KATANA_HALF = 0.0035;
+    /** Karambit cầm ngược, theo hướng tay phải (độ). Tay trái đổi dấu. */
+    private static final float REVERSE_ARM_Y = -25f;
+    private static final float REVERSE_ARM_Z = 75f;
+    /** Góc xoay thêm của thân dao quanh cán, để lưỡi cong hướng sang trái */
+    private static final float REVERSE_KNIFE_Z = 90f;
     /** Mốc từ mixin chỉ có hiệu lực trong khoảng này, tránh vẽ lặp sang khung hình sau */
     private static final long THIRD_PERSON_MAX_AGE_NS = 60_000_000L;
 
@@ -169,8 +176,22 @@ public final class Weapon3D {
             m.translate(0f, 0f, -0.05f * (float) Math.sin(Math.sqrt(swing) * Math.PI));
             applySwing(m, side, swing);
 
-            // Cánh tay vẽ trước, vũ khí vẽ sau để lưỡi không bị tay che
-            PlayerArm.draw(m, side);
+            // Karambit (tier DIAMOND, tức diamond_sword): cầm ngược.
+            // Cánh tay xoay ngang từ cạnh phải màn hình vào giữa, còn dao xoay thêm để lưỡi cong hướng sang trái.
+            // Tay trái đổi dấu góc (side), nên hai bên đối xứng.
+            boolean reverse = tier == Tier.DIAMOND;
+            m.push();
+            try {
+                if (reverse) {
+                    m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * REVERSE_ARM_Y));
+                    m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * REVERSE_ARM_Z));
+                }
+                // Cánh tay vẽ trước, vũ khí vẽ sau để lưỡi không bị tay che
+                PlayerArm.draw(m, side);
+            } finally {
+                m.pop();
+            }
+            if (reverse) m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * REVERSE_KNIFE_Z));
 
             // Vệt mờ khi xoay (Inspect hoặc múa khi rảnh): ba bản sao lùi sau, càng xa càng mờ
             if (spin != 0f || flourishing) {
@@ -197,6 +218,7 @@ public final class Weapon3D {
             drawAdditive(mat, 0, 0, 0, null, s, tier, glint, pulse, axis, 0);
             return true;
         } catch (Throwable ex) {
+            Guard.rethrowIfFatal(ex);
             broken = true;
             System.err.println("[Elara] Tắt Vũ khí 3D do lỗi: " + ex);
             return false;
@@ -286,6 +308,7 @@ public final class Weapon3D {
             solid.flush();
             drawAdditive(new Matrix4f(), c.x, c.y, c.z, pose, s, tier, glint, pulse(), axis, flip);
         } catch (Throwable ex) {
+            Guard.rethrowIfFatal(ex);
             broken = true;
             System.err.println("[Elara] Tắt Vũ khí 3D ở góc nhìn thứ ba do lỗi: " + ex);
         }

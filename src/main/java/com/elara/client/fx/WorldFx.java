@@ -1,5 +1,7 @@
 package com.elara.client.fx;
 
+import com.elara.client.core.Guard;
+
 import com.elara.client.core.ColorMath;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
@@ -160,6 +162,7 @@ public final class WorldFx {
         try {
             tickInner(client);
         } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
             brokenTick = true;
             partCount = 0;
             rippleCredit = 0f;
@@ -364,6 +367,7 @@ public final class WorldFx {
         try {
             drawInner(m, cam, client);
         } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
             brokenDraw = true;
             System.err.println("[Elara] Tắt Thế giới sống động do lỗi: " + t);
         }

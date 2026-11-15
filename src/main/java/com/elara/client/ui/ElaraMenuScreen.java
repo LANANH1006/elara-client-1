@@ -57,6 +57,17 @@ public class ElaraMenuScreen extends Screen {
         super(Text.literal("Elara Client"));
         this.parent = parent;
         IosStyle.beginOpen();
+        // Mở lại đúng tab và vị trí cuộn lần trước
+        tab = TABS[Math.max(0, Math.min(TABS.length - 1, ElaraConfig.menuTab()))];
+        scroll = Math.max(0, ElaraConfig.menuScroll());
+    }
+
+    /** Chỉ số của tab đang mở trong TABS, để lưu vào cấu hình */
+    private int menuIndex() {
+        for (int i = 0; i < TABS.length; i++) {
+            if (TABS[i] == tab) return i;
+        }
+        return 0;
     }
 
     @Override
@@ -94,7 +105,7 @@ public class ElaraMenuScreen extends Screen {
     private static int extrasFor(Feature.Group g) {
         return switch (g) {
             case FIX_LAG -> 2;
-            case MISC -> 8;
+            case MISC -> 9;
             case BUILDER -> 1;
             default -> 0;
         };
@@ -273,6 +284,7 @@ public class ElaraMenuScreen extends Screen {
         drawPill(ctx, px + PAD, extraY(n, 5), pw - PAD * 2, 20, Lang.get("ui.island_editor"));
         drawPill(ctx, px + PAD, extraY(n, 6), pw - PAD * 2, 20, Lang.get("ui.hud_editor"));
         drawPill(ctx, px + PAD, extraY(n, 7), pw - PAD * 2, 20, Lang.get("music.open"));
+        drawPill(ctx, px + PAD, extraY(n, 8), pw - PAD * 2, 20, Lang.get("ui.skin_open"));
     }
 
     private void drawSwatches(DrawContext ctx, int y) {
@@ -366,6 +378,7 @@ public class ElaraMenuScreen extends Screen {
                     tab = TABS[i];
                     scroll = 0;
                     scrollAcc = 0;
+                    ElaraConfig.setMenuState(i, 0);
                 }
                 return true;
             }
@@ -455,6 +468,8 @@ public class ElaraMenuScreen extends Screen {
             client.setScreen(new HudEditorScreen(this));
         } else if (inside(mx, my, px + PAD, extraY(n, 7), full, 20)) {
             client.setScreen(new MusicScreen(this));
+        } else if (inside(mx, my, px + PAD, extraY(n, 8), full, 20)) {
+            client.setScreen(new SkinScreen(this));
         }
     }
 
@@ -552,6 +567,7 @@ public class ElaraMenuScreen extends Screen {
     @Override
     public void close() {
         if (IosStyle.isClosing()) return;
+        ElaraConfig.setMenuState(menuIndex(), scroll);
         ElaraConfig.save();
         IosStyle.beginClose();
     }

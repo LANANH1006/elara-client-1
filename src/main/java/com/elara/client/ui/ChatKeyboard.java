@@ -1,5 +1,7 @@
 package com.elara.client.ui;
 
+import com.elara.client.core.Guard;
+
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.LagFix;
@@ -134,6 +136,7 @@ public final class ChatKeyboard {
                 drawKey(ctx, c, k, inside(k.x, k.y, k.w, KEY_H, mouseX, mouseY));
             }
         } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
             broken = true;
             System.err.println("[Elara] Tắt Bàn phím chat do lỗi: " + t);
         }
@@ -267,6 +270,7 @@ public final class ChatKeyboard {
             }
             return false;
         } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
             broken = true;
             System.err.println("[Elara] Tắt Bàn phím chat do lỗi: " + t);
             return true;

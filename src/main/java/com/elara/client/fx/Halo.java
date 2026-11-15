@@ -1,6 +1,7 @@
 package com.elara.client.fx;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.music.MusicPlayer;
 import net.minecraft.client.MinecraftClient;
 
 import java.util.Map;
@@ -46,10 +47,14 @@ public final class Halo {
                              WorldBatch.V cam) {
         b.ring(c, r, 0.025, 40, 0, WorldBatch.withAlpha(argb, 0.7f));
 
-        // Cột sóng: độ cao chạy vòng quanh theo góc
+        // Dữ liệu tần số thật của nhạc đang phát (8 dải, 0..1). Không phát nhạc thì các dải bằng 0.
+        float[] bands = MusicPlayer.bands();
+
+        // Cột sóng: độ cao chạy vòng quanh theo góc, cộng thêm biên độ của dải tần tương ứng
         for (int i = 0; i < BARS; i++) {
             double ang = 2 * Math.PI * i / BARS;
-            double h = (0.03 + 0.10 * (0.5 + 0.5 * Math.sin(t * 6.0 - i * 0.55))) * size;
+            double band = bands[i * bands.length / BARS];
+            double h = (0.03 + 0.10 * (0.5 + 0.5 * Math.sin(t * 6.0 - i * 0.55)) + 0.22 * band) * size;
             WorldBatch.V base = new WorldBatch.V(c.x() + r * Math.cos(ang), c.y(), c.z() + r * Math.sin(ang));
             b.billboardBeam(base, base.add(new WorldBatch.V(0, h, 0)), cam, 0.035 * size, argb);
         }

@@ -1,5 +1,7 @@
 package com.elara.client.fx;
 
+import com.elara.client.core.Guard;
+
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -75,6 +77,7 @@ public final class Effects {
                 Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
                         ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
             } catch (Throwable ex) {
+                Guard.rethrowIfFatal(ex);
                 wingsBroken = true;
                 System.err.println("[Elara] Tắt Cánh do lỗi: " + ex);
             }
@@ -86,6 +89,7 @@ public final class Effects {
             try {
                 SoftShadow.draw(m, camV);
             } catch (Throwable ex) {
+                Guard.rethrowIfFatal(ex);
                 shadowBroken = true;
                 System.err.println("[Elara] Tắt Bóng mềm do lỗi: " + ex);
             }
@@ -95,6 +99,7 @@ public final class Effects {
             try {
                 CombatFx.draw(m, camV);
             } catch (Throwable ex) {
+                Guard.rethrowIfFatal(ex);
                 combatBroken = true;
                 System.err.println("[Elara] Tắt Hiệu ứng PvP do lỗi: " + ex);
             }
@@ -104,6 +109,7 @@ public final class Effects {
             try {
                 Cape.draw(b, client, ElaraConfig.layout(Feature.CAPE), ElaraConfig.color(Feature.CAPE), a);
             } catch (Throwable ex) {
+                Guard.rethrowIfFatal(ex);
                 // Lỗi trong một hiệu ứng không được làm sập game. Tắt riêng hiệu ứng này và báo một lần.
                 System.err.println("[Elara] Tắt Áo choàng do lỗi: " + ex);
                 BROKEN.add(Feature.CAPE);
@@ -116,6 +122,7 @@ public final class Effects {
                 BodyGlow.draw(b, client, ElaraConfig.layout(Feature.BODY_GLOW),
                         ElaraConfig.color(Feature.BODY_GLOW), a);
             } catch (Throwable ex) {
+                Guard.rethrowIfFatal(ex);
                 System.err.println("[Elara] Tắt Viền sáng thân do lỗi: " + ex);
                 BROKEN.add(Feature.BODY_GLOW);
             }
@@ -127,6 +134,7 @@ public final class Effects {
                 RibbonTrail.draw(b, client, ElaraConfig.layout(Feature.RIBBON_TRAIL),
                         ElaraConfig.color(Feature.RIBBON_TRAIL), a, new WorldBatch.V(cam.x, cam.y, cam.z));
             } catch (Throwable ex) {
+                Guard.rethrowIfFatal(ex);
                 System.err.println("[Elara] Tắt Dải lụa sau lưng do lỗi: " + ex);
                 BROKEN.add(Feature.RIBBON_TRAIL);
             }

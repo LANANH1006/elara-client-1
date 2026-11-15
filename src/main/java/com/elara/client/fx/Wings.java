@@ -38,6 +38,11 @@ public final class Wings {
     /** Số ô lưới của tấm cánh tinh vân: theo sải và theo dây cung */
     private static final int SHEET_S = 8;
     private static final int SHEET_T = 3;
+    /**
+     * Hệ số chiều cao của tấm tinh vân so với bản trước: 3.2 lần. Chỉ tác động phần cao (trục đứng),
+     * sải ngang ARM_LEN giữ nguyên 1.45 block mỗi bên. Đặt 1.0 để trở về kích thước cũ.
+     */
+    private static final double GALAXY_HEIGHT = 3.2;
     private static final WorldBatch.V UP = new WorldBatch.V(0, 1, 0);
 
     /** Cách một kiểu cánh trông thế nào */
@@ -107,13 +112,13 @@ public final class Wings {
         for (int i = 0; i <= SHEET_S; i++) {
             double s = i / (double) SHEET_S;
             double lateral = size * ARM_LEN * (0.35 + 0.65 * spread) * s;
-            double lift = size * (0.28 * spread * Math.sin(Math.PI * s * 0.8) + 0.45 * spread * s * s * s);
-            double wave = amp * Math.sin(phase - s * 2.7) * s * size * 0.9;
+            double lift = GALAXY_HEIGHT * size * (0.28 * spread * Math.sin(Math.PI * s * 0.8) + 0.45 * spread * s * s * s);
+            double wave = GALAXY_HEIGHT * amp * Math.sin(phase - s * 2.7) * s * size * 0.9;
             double backOff = size * (0.10 * s * s + 0.22 * fold * s + 0.20 * spread * s * s);
             WorldBatch.V base = root.add(span.mul(lateral)).add(UP.mul(lift + wave)).add(back.mul(backOff));
-            // Dây cung dài dần ra chóp, hạ xuống và lùi về sau
+            // Dây cung dài dần ra chóp, hạ xuống và lùi về sau (phần cao nhân GALAXY_HEIGHT)
             double chordLen = size * (0.35 + 0.65 * s) * (0.6 + 0.4 * spread);
-            WorldBatch.V chord = back.mul(chordLen * 0.9).add(UP.mul(-chordLen * 0.35));
+            WorldBatch.V chord = back.mul(chordLen * 0.9).add(UP.mul(-chordLen * 0.35 * GALAXY_HEIGHT));
             for (int j = 0; j <= SHEET_T; j++) {
                 p[i][j] = base.add(chord.mul(j / (double) SHEET_T));
             }
