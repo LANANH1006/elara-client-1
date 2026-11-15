@@ -173,6 +173,10 @@ public final class ElaraConfig {
             case AFTERGLOW -> l.color = 0xFFFFE9A8;
             case SHOCKWAVE -> l.color = 0xFF7FD8FF;
             case LOW_FIRE -> l.color = 0xFFFF7A2E;
+            case AMBIENCE -> l.color = 0xFFFFB3D1;
+            case RAIN_RIPPLE -> l.color = 0xFF9FD8FF;
+            case CHROMA_WORLD -> l.color = 0xFF7FE8FF;
+            case MIST_GLASS -> l.color = 0xFFE6F4FF;
             default -> { }
         }
         return l;

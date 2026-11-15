@@ -28,7 +28,11 @@ public class ColorPickerScreen extends Screen {
     private int px;
     private int py;
     private int pw;
-    private final int ph = 210;
+    private final int ph = 250;
+
+    /** Màu mẫu: Sakura trước, rồi xanh ngọc, vàng, tím, trắng, cam lửa */
+    private static final int[] PRESETS = {0xFFFF85B3, 0xFF7FE8FF, 0xFFFFD27F, 0xFFB38BFF, 0xFFFFFFFF, 0xFFFF7A2E};
+    private static final int PRESET_GAP = 4;
     private int drag = DRAG_NONE;
 
     public ColorPickerScreen(Screen parent, Feature feature) {
@@ -60,6 +64,9 @@ public class ColorPickerScreen extends Screen {
     private int alphaY() { return py + 164; }
     private int chromaY() { return py + 186; }
     private int toggleX() { return px + pw - PAD - 30; }
+    private int presetY() { return py + 214; }
+    private int presetW() { return (barW() - PRESET_GAP * (PRESETS.length - 1)) / PRESETS.length; }
+    private int presetX(int i) { return barX() + i * (presetW() + PRESET_GAP); }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -116,6 +123,13 @@ public class ColorPickerScreen extends Screen {
         int cy = chromaY();
         ctx.drawText(textRenderer, Text.literal(Lang.get("picker.chroma")), px + PAD, cy + 5, IosStyle.TEXT, false);
         IosStyle.toggleSwitch(ctx, toggleX(), cy + 2, l.get("chroma", 0) == 1, "chroma:" + feature.name());
+
+        // Màu mẫu: bấm một ô là đổi ngay sang màu đó
+        int presY = presetY();
+        ctx.drawText(textRenderer, Text.literal(Lang.get("picker.presets")), px + PAD, presY, IosStyle.TEXT, false);
+        for (int i = 0; i < PRESETS.length; i++) {
+            IosStyle.rounded(ctx, presetX(i), presY + 12, presetW(), 18, 5, PRESETS[i]);
+        }
     }
 
     @Override
@@ -140,6 +154,17 @@ public class ColorPickerScreen extends Screen {
             ElaraConfig.Layout l = ElaraConfig.layout(feature);
             l.put("chroma", l.get("chroma", 0) == 1 ? 0 : 1);
             ElaraConfig.save();
+            return true;
+        }
+        if (inside(mx, my, barX(), presetY() + 12, barW(), 18)) {
+            int i = (int) ((mx - barX()) / (presetW() + PRESET_GAP));
+            if (i >= 0 && i < PRESETS.length) {
+                ElaraConfig.Layout l = ElaraConfig.layout(feature);
+                float[] hsb = ColorMath.rgbToHsb(PRESETS[i] & 0xFFFFFF);
+                apply(l, Math.round(hsb[0] * 359f), Math.round(hsb[1] * 100f), Math.round(hsb[2] * 100f),
+                        l.get("alpha", 100));
+                ElaraConfig.save();
+            }
             return true;
         }
         return super.mouseClicked(mx, my, button);

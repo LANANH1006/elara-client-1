@@ -22,6 +22,7 @@
     "ScreenBackgroundMixin",
     "BlockEntityRenderMixin",
     "EntityRendererBadgeMixin",
-    "PlayerListHudMixin"
+    "PlayerListHudMixin",
+    "ClientWorldSkyMixin"
   ]
 }

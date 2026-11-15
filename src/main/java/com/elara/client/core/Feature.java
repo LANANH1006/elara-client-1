@@ -44,6 +44,12 @@ public enum Feature {
     SHOCKWAVE(Group.CROSSHAIR),
     LOW_FIRE(Group.CROSSHAIR),
 
+    WORLD_SKY(Group.WORLD),
+    AMBIENCE(Group.WORLD),
+    RAIN_RIPPLE(Group.WORLD),
+    CHROMA_WORLD(Group.WORLD),
+    MIST_GLASS(Group.WORLD),
+
     MUSIC_PLAYER(Group.MISC),
     LYRICS_ISLAND(Group.MISC),
     KEYSTROKES(Group.MISC),
@@ -55,6 +61,7 @@ public enum Feature {
     public enum Group {
         FIX_LAG(2),
         EFFECTS(3),
+        WORLD(9),
         KNIVES(4),
         CROSSHAIR(5),
         MISC(6),

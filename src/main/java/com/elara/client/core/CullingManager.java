@@ -18,8 +18,8 @@ import net.minecraft.world.RaycastContext;
  * Ngân sách tia giới hạn số lần raycast mỗi tick để không tự gây lag.
  */
 public final class CullingManager {
-    /** Particle xa hơn 16 khối bị bỏ khi bật Fix Lag hạt */
-    private static final double PARTICLE_RANGE = 16.0;
+    /** Particle xa hơn khoảng này (8 đến 32 khối, chỉnh trong cài đặt Fix Lag hạt) bị bỏ */
+    private static final double PARTICLE_RANGE_DEFAULT = 16.0;
     private static final double ENTITY_RANGE = 96.0;
     private static final double ALWAYS_VISIBLE = 6.0;
     private static final int RAY_BUDGET = 40;
@@ -40,8 +40,9 @@ public final class CullingManager {
         if (c.world == null || c.gameRenderer == null) return true;
 
         Vec3d cam = c.gameRenderer.getCamera().getPos();
+        double range = ElaraConfig.layout(Feature.LAG_PARTICLES).get("dist", (int) PARTICLE_RANGE_DEFAULT);
         double d2 = cam.squaredDistanceTo(x, y, z);
-        if (d2 > PARTICLE_RANGE * PARTICLE_RANGE) return false;
+        if (d2 > range * range) return false;
         if (d2 < ALWAYS_VISIBLE * ALWAYS_VISIBLE) return true;
         return visible(c, cam, new Vec3d(x, y, z));
     }

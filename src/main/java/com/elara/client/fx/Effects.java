@@ -67,6 +67,15 @@ public final class Effects {
             Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
                     ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
         }
+        // Thế giới sống động: bầu trời, gợn sóng mưa, hạt môi trường, Mist/Glass/Bokeh
+        if (WorldFx.active() && !BROKEN.contains(Feature.AMBIENCE)) {
+            try {
+                WorldFx.draw(m, camV, client);
+            } catch (RuntimeException ex) {
+                System.err.println("[Elara] Tắt Thế giới sống động do lỗi: " + ex);
+                BROKEN.add(Feature.AMBIENCE);
+            }
+        }
         // Hiệu ứng PvP: sóng đánh trúng, tàn quang, sóng xung kích, phá khiên (tự tạo batch riêng)
         CombatFx.draw(m, camV);
         if (ElaraConfig.isOn(Feature.CAPE) && !BROKEN.contains(Feature.CAPE)) {

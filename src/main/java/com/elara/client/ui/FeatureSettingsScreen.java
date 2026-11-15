@@ -3,6 +3,7 @@ package com.elara.client.ui;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.LagFix;
+import com.elara.client.fx.WorldFx;
 import com.elara.client.i18n.Lang;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -81,7 +82,18 @@ public class FeatureSettingsScreen extends Screen {
                 || f == Feature.CAPE || f == Feature.BODY_GLOW || f == Feature.RIBBON_TRAIL
                 || f == Feature.WEAPON_3D || f == Feature.TARGET_HUD || f == Feature.SHIELD_BREAKER
                 || f == Feature.HIT_RIPPLE || f == Feature.AFTERGLOW || f == Feature.SHOCKWAVE
-                || f == Feature.LOW_FIRE;
+                || f == Feature.LOW_FIRE || f == Feature.AMBIENCE || f == Feature.RAIN_RIPPLE
+                || f == Feature.CHROMA_WORLD || f == Feature.MIST_GLASS;
+    }
+
+    /** Ba mức: thấp, vừa, cao */
+    private static String[] levels() {
+        return new String[] {Lang.get("level.low"), Lang.get("level.med"), Lang.get("level.high")};
+    }
+
+    /** Tắt hoặc bật */
+    private static String[] onOff() {
+        return new String[] {Lang.get("level.off"), Lang.get("level.on")};
     }
 
     /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
@@ -195,7 +207,39 @@ public class FeatureSettingsScreen extends Screen {
             case HIT_RIPPLE -> list.add(slider(Lang.get("set.wave_r"), "", 5, 30, "radius", 10));
             case AFTERGLOW -> list.add(slider(Lang.get("set.particles"), "", 20, 150, "count", 60));
             case SHOCKWAVE -> list.add(slider(Lang.get("set.shock_r"), "", 5, 60, "radius", 25));
-            case LOW_FIRE -> list.add(slider(Lang.get("set.fire_h"), "%", 5, 60, "height", 22));
+            case LOW_FIRE -> list.add(slider(Lang.get("set.fire_drop"), "%", 0, 100, "drop", 45));
+            case LAG_PARTICLES -> list.add(slider(Lang.get("set.particle_dist"), "", 8, 32, "dist", 16));
+            case WORLD_SKY -> {
+                String[] skies = new String[WorldFx.SKY_STYLES];
+                for (int i = 0; i < skies.length; i++) skies[i] = Lang.get("sky." + i);
+                list.add(new Ctl(Lang.get("set.sky_style"), "", 0, skies.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), skies));
+            }
+            case AMBIENCE -> {
+                String[] kinds = {
+                        Lang.get("amb.motes"), Lang.get("amb.stardust"), Lang.get("amb.petals"), Lang.get("amb.snow")
+                };
+                list.add(new Ctl(Lang.get("set.amb_style"), "", 0, kinds.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), kinds));
+                list.add(new Ctl(Lang.get("set.density"), "", 0, 2,
+                        l -> l.get("density", 1), (l, v) -> l.put("density", v), levels()));
+            }
+            case RAIN_RIPPLE -> {
+                list.add(slider(Lang.get("set.ripple_count"), "", 10, WorldFx.RIPPLE_MAX, "count", 120));
+                list.add(new Ctl(Lang.get("set.wet_ground"), "", 0, 1,
+                        l -> l.get("wet", 1), (l, v) -> l.put("wet", v), onOff()));
+                list.add(new Ctl(Lang.get("set.rain_force"), "", 0, 1,
+                        l -> l.get("force", 0), (l, v) -> l.put("force", v),
+                        new String[] {Lang.get("rain.when_rain"), Lang.get("rain.always")}));
+            }
+            case CHROMA_WORLD -> list.add(slider(Lang.get("set.tint_strength"), "%", 0, 100, "strength", 35));
+            case MIST_GLASS -> {
+                String[] kinds = {Lang.get("mist.mist"), Lang.get("mist.glass"), Lang.get("mist.bokeh")};
+                list.add(new Ctl(Lang.get("set.mist_style"), "", 0, kinds.length - 1,
+                        l -> l.get("style", 0), (l, v) -> l.put("style", v), kinds));
+                list.add(new Ctl(Lang.get("set.density"), "", 0, 2,
+                        l -> l.get("density", 1), (l, v) -> l.put("density", v), levels()));
+            }
             case KNIFE_ANIM -> {
                 list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));
                 list.add(slider(Lang.get("set.hand_y"), "", -50, 50, "hy", 0));

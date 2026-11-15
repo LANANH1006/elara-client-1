@@ -91,19 +91,21 @@ public final class Wings {
         }
 
         if (look.single()) {
-            // Bướm: một lớp lông tròn, dài
+            // Bướm: một lớp lông tròn, dài, xòe ra SAU lưng (back dương là phía sau)
             for (int k = 1; k < n; k++) {
-                WorldBatch.V dir = back.mul(-0.6).add(UP.mul(0.45)).add(span.mul(0.5));
-                feather(wb, tb, look, joint[k], dir, size * look.lenK() * 0.8, look.wMax(), 0.02, k, cam, size);
+                WorldBatch.V dir = back.mul(0.6).add(UP.mul(0.45)).add(span.mul(0.5));
+                feather(wb, tb, look, joint[k], dir, size * look.lenK() * 0.9, look.wMax() * 1.1, 0.02, k, cam, size);
             }
             return;
         }
 
-        // Ba lớp: lông chính (đuôi cánh), lông phụ, lông che (sát cánh tay)
+        // Bốn lớp, từ ngoài vào trong. back dương nghĩa là lông xòe ra sau lưng.
+        // Lớp chính (đuôi cánh), lớp phụ, lớp che, lớp lót sát thân: phủ kín mặt cánh.
         double[][] layers = {
-                {-1.0, -0.12, 0.22, 0.9},
-                {-0.85, 0.22, 0.1, 0.65},
-                {-0.55, 0.5, 0.0, 0.4},
+                {1.0, -0.12, 0.22, 1.0},
+                {0.85, 0.22, 0.10, 0.80},
+                {0.55, 0.50, 0.00, 0.58},
+                {0.30, 0.70, -0.05, 0.42},
         };
         for (double[] ly : layers) {
             for (int k = 1; k < n; k++) {
@@ -186,15 +188,15 @@ public final class Wings {
     private static Look look(int style, int argb) {
         return switch (style) {
             case 1 -> new Look(darken(argb, 0.8f), WorldBatch.withAlpha(argb, 0.4f),
-                    0.17, 1.2, true, false, false, false, false);
+                    0.24, 1.2, true, false, false, false, false);
             case 2 -> new Look(WorldBatch.withAlpha(argb, 0.7f), WorldBatch.withAlpha(mix(argb, 0xFFFFFFFF, 0.3f), 0.35f),
-                    0.36, 0.8, false, false, false, true, true);
+                    0.40, 0.8, false, false, false, true, true);
             case 3 -> new Look(argb, WorldBatch.withAlpha(argb, 0.2f),
                     0.18, 1.0, false, true, false, false, false);
             case 4 -> new Look(mix(argb, 0xFF000000, 0.6f), WorldBatch.withAlpha(mix(argb, 0xFF000000, 0.6f), 0.45f),
-                    0.2, 1.1, false, false, true, false, false);
+                    0.28, 1.1, false, false, true, false, false);
             default -> new Look(mix(argb, 0xFFFFFFFF, 0.45f), WorldBatch.withAlpha(argb, 0.5f),
-                    0.2, 1.0, false, false, false, false, false);
+                    0.28, 1.0, false, false, false, false, false);
         };
     }
 

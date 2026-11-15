@@ -5,10 +5,13 @@ import com.elara.client.core.Feature;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.TntEntity;
+import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.util.math.Box;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -50,6 +53,8 @@ public final class CombatFx {
     private static final List<Shard> SHARDS = new ArrayList<>();
     private static final Map<UUID, Hit> RECENT = new HashMap<>();
     private static final Map<UUID, Long> SHIELD_BROKEN = new HashMap<>();
+    /** TNT và tinh thể End đang thấy gần người chơi, lần tick trước: id -> x, y, z */
+    private static final Map<UUID, double[]> BOMBS = new HashMap<>();
 
     private static float lastHealth = -1f;
     private static boolean wasOnGround = true;
@@ -104,6 +109,9 @@ public final class CombatFx {
         }
         wasOnGround = ground;
 
+        // Vụ nổ gần mình (TNT, tinh thể End): sóng xung kích tại chỗ nổ
+        trackExplosions(client, me, now);
+
         // Mục tiêu vừa bị mình đánh, giờ hết máu: tàn quang
         Iterator<Map.Entry<UUID, Hit>> it = RECENT.entrySet().iterator();
         while (it.hasNext()) {
@@ -128,6 +136,37 @@ public final class CombatFx {
         trim(RIPPLES);
         trim(GLOWS);
         trim(SHOCKS);
+    }
+
+    /**
+     * TNT và tinh thể End nổ rồi biến mất khỏi thế giới. Nếu chúng biến mất trong bán kính 12 block
+     * quanh người chơi thì coi như có một vụ nổ ở vị trí lần cuối thấy chúng.
+     */
+    private static void trackExplosions(MinecraftClient client, PlayerEntity me, long now) {
+        if (!ElaraConfig.isOn(Feature.SHOCKWAVE)) {
+            BOMBS.clear();
+            return;
+        }
+        Box box = me.getBoundingBox().expand(14.0);
+        Map<UUID, double[]> seen = new HashMap<>();
+        for (Entity e : client.world.getEntitiesByClass(TntEntity.class, box, x -> true)) {
+            seen.put(e.getUuid(), new double[] {e.getX(), e.getY(), e.getZ()});
+        }
+        for (Entity e : client.world.getEntitiesByClass(EndCrystalEntity.class, box, x -> true)) {
+            seen.put(e.getUuid(), new double[] {e.getX(), e.getY(), e.getZ()});
+        }
+        for (Map.Entry<UUID, double[]> gone : BOMBS.entrySet()) {
+            if (seen.containsKey(gone.getKey())) continue;
+            double[] p = gone.getValue();
+            double dx = p[0] - me.getX();
+            double dy = p[1] - me.getY();
+            double dz = p[2] - me.getZ();
+            if (dx * dx + dy * dy + dz * dz <= 12.0 * 12.0) {
+                SHOCKS.add(new Shock(p[0], p[1], p[2], now));
+            }
+        }
+        BOMBS.clear();
+        BOMBS.putAll(seen);
     }
 
     /** Gọi khi người chơi local đánh trúng một thực thể */

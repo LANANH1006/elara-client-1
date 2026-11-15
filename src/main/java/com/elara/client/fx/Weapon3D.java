@@ -12,6 +12,7 @@ import net.minecraft.util.Arm;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 
 /**
  * Vũ khí 3D: thay kiếm gốc bằng mô hình vẽ bằng WorldBatch.
@@ -58,6 +59,10 @@ public final class Weapon3D {
         private final Pose pose;
         private final double s;
         private final float k;
+        /** Trục và góc xoay ở hệ local (múa khi rảnh), null nếu không xoay */
+        private WorldBatch.V rotAxis;
+        private double rotCos = 1;
+        private double rotSin = 0;
 
         Canvas(WorldBatch batch, Pose pose, double s, float k) {
             this.batch = batch;
@@ -66,8 +71,22 @@ public final class Weapon3D {
             this.k = k;
         }
 
+        /** Xoay mọi điểm quanh trục local đi qua gốc. Trả về chính nó để nối chuỗi. */
+        Canvas spin(WorldBatch.V axis, double deg) {
+            if (Math.abs(deg) < 1e-6) {
+                rotAxis = null;
+                return this;
+            }
+            double r = Math.toRadians(deg);
+            rotAxis = axis;
+            rotCos = Math.cos(r);
+            rotSin = Math.sin(r);
+            return this;
+        }
+
         private WorldBatch.V map(WorldBatch.V p) {
             WorldBatch.V q = p.mul(s);
+            if (rotAxis != null) q = rodrigues(q, rotAxis, rotCos, rotSin);
             if (pose == null) return q;
             return pose.o().add(pose.ax().mul(q.x())).add(pose.ay().mul(q.y())).add(pose.az().mul(q.z()));
         }
@@ -136,6 +155,10 @@ public final class Weapon3D {
         float spin = KnifeAnim.spinDegrees();
         double pulse = pulse();
         double s = scaleOf(tier) * size;
+        float[] idle = KnifeAnim.idlePose();
+        double flip = idleDegrees(tier, idle[0]) * idle[1];
+        WorldBatch.V axis = idleAxis(tier);
+        boolean flourishing = Math.abs(flip) > 0.5;
 
         m.push();
         try {
@@ -146,12 +169,13 @@ public final class Weapon3D {
             // Cánh tay vẽ trước, vũ khí vẽ sau để lưỡi không bị tay che
             PlayerArm.draw(m, side);
 
-            // Vệt mờ khi xoay (Inspect): ba bản sao lùi sau, càng xa càng mờ
-            if (spin != 0f) {
+            // Vệt mờ khi xoay (Inspect hoặc múa khi rảnh): ba bản sao lùi sau, càng xa càng mờ
+            if (spin != 0f || flourishing) {
                 for (int k = 3; k >= 1; k--) {
                     m.push();
                     try {
-                        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(spin - 16f * k));
+                        if (spin != 0f) m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(spin - 16f * k));
+                        if (flourishing) m.multiply(quat(axis, flip - 12.0 * k * Math.signum(flip)));
                         WorldBatch ghost = new WorldBatch(m.peek().getPositionMatrix(), 0, 0, 0, false);
                         paintSolid(new Canvas(ghost, null, s, 0.35f / k), tier);
                         ghost.flush();
@@ -162,11 +186,12 @@ public final class Weapon3D {
             }
 
             m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(spin));
+            if (flourishing) m.multiply(quat(axis, flip));
             Matrix4f mat = m.peek().getPositionMatrix();
             WorldBatch solid = new WorldBatch(mat, 0, 0, 0, false);
             paintSolid(new Canvas(solid, null, s, 1f), tier);
             solid.flush();
-            drawAdditive(mat, 0, 0, 0, null, s, tier, glint, pulse);
+            drawAdditive(mat, 0, 0, 0, null, s, tier, glint, pulse, axis, 0);
             return true;
         } catch (RuntimeException ex) {
             broken = true;
@@ -247,15 +272,56 @@ public final class Weapon3D {
             Pose pose = new Pose(hand, right, up, fwd.mul(-1));
             double s = scaleOf(tier) * size;
 
+            // Múa khi rảnh cũng hiện ở góc nhìn thứ ba, xoay các điểm local trước khi đổi sang thế giới
+            float[] idle = KnifeAnim.idlePose();
+            double flip = idleDegrees(tier, idle[0]) * idle[1];
+            WorldBatch.V axis = idleAxis(tier);
+
             Vec3d c = cam;
             WorldBatch solid = new WorldBatch(new Matrix4f(), c.x, c.y, c.z, false);
-            paintSolid(new Canvas(solid, pose, s, 1f), tier);
+            paintSolid(new Canvas(solid, pose, s, 1f).spin(axis, flip), tier);
             solid.flush();
-            drawAdditive(new Matrix4f(), c.x, c.y, c.z, pose, s, tier, glint, pulse());
+            drawAdditive(new Matrix4f(), c.x, c.y, c.z, pose, s, tier, glint, pulse(), axis, flip);
         } catch (RuntimeException ex) {
             broken = true;
             System.err.println("[Elara] Tắt Vũ khí 3D ở góc nhìn thứ ba do lỗi: " + ex);
         }
+    }
+
+    // ---------- Múa khi rảnh ----------
+
+    /** Trục xoay khi múa của từng dáng, trong hệ local của lưỡi (DIR, SIDE, NORM) */
+    private static WorldBatch.V idleAxis(Tier t) {
+        return switch (t) {
+            case IRON, DIAMOND -> DIR;
+            case WOOD, STONE -> SIDE;
+            case GOLD, NETHERITE, KATANA -> NORM;
+        };
+    }
+
+    /**
+     * Góc múa theo pha p từ 0 đến 1. Lật hoặc xoay tròn cho các dao có cán và butterfly, lắc cổ tay
+     * cho gut, skeleton và katana. Ở p = 1 mọi góc về 0 hoặc 360 độ, nên quay về tư thế cầm không bị nhảy.
+     */
+    private static double idleDegrees(Tier t, double p) {
+        double ease = p * p * (3 - 2 * p);
+        double wave = Math.sin(2 * Math.PI * p);
+        return switch (t) {
+            case WOOD -> 40 * wave;
+            case STONE, IRON, GOLD, DIAMOND -> 360 * ease;
+            case NETHERITE -> 60 * wave;
+            case KATANA -> 35 * wave;
+        };
+    }
+
+    private static Quaternionf quat(WorldBatch.V axis, double deg) {
+        return new Quaternionf().rotationAxis((float) Math.toRadians(deg),
+                (float) axis.x(), (float) axis.y(), (float) axis.z());
+    }
+
+    /** Xoay v quanh trục đơn vị k với cos c và sin s: v·c + (k×v)·s + k(k·v)(1−c) */
+    private static WorldBatch.V rodrigues(WorldBatch.V v, WorldBatch.V k, double c, double s) {
+        return v.mul(c).add(cross(k, v).mul(s)).add(k.mul(dot(k, v) * (1 - c)));
     }
 
     // ---------- Chung ----------
@@ -282,10 +348,10 @@ public final class Weapon3D {
 
     /** Lớp cộng sáng: ánh tím khi có phù văn, viền Radiance cho katana */
     private static void drawAdditive(Matrix4f mat, double cx, double cy, double cz, Pose pose, double s,
-                                     Tier tier, boolean glint, double pulse) {
+                                     Tier tier, boolean glint, double pulse, WorldBatch.V axis, double deg) {
         if (!glint && tier != Tier.KATANA) return;
         WorldBatch add = new WorldBatch(mat, cx, cy, cz, true);
-        Canvas c = new Canvas(add, pose, s, 1f);
+        Canvas c = new Canvas(add, pose, s, 1f).spin(axis, deg);
         if (glint) glint(c, tier, pulse);
         if (tier == Tier.KATANA) radiance(c, pulse);
         add.flush();
