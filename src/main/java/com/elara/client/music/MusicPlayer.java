@@ -5,6 +5,7 @@ import com.elara.client.core.Guard;
 import com.elara.client.i18n.Lang;
 import net.fabricmc.loader.api.FabricLoader;
 import org.lwjgl.openal.AL10;
+import org.lwjgl.openal.AL11;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -306,7 +307,8 @@ public final class MusicPlayer {
     /** Frame đang nghe: frame đã xong trong các buffer, cộng vị trí trong buffer đang phát */
     private static long playedFrames() {
         if (!loaded || !alReady) return 0;
-        int off = AL10.alGetSourcei(source, AL10.AL_SAMPLE_OFFSET);
+        // AL_SAMPLE_OFFSET thuộc OpenAL 1.1 (AL11). alGetSourcei vẫn nằm ở AL10.
+        int off = AL10.alGetSourcei(source, AL11.AL_SAMPLE_OFFSET);
         return Math.max(0, Math.min(totalFrames, sentFrames - queuedFrames + off));
     }
 
