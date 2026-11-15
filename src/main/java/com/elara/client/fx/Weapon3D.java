@@ -28,8 +28,8 @@ public final class Weapon3D {
     public static final int STYLES = 2;
     private static final int STYLE_KATANA = 1;
 
-    /** Dao CS2 phóng to 2.2 lần so với bản đầu */
-    private static final double KNIFE_SCALE = 2.2;
+    /** Dao CS2 phóng to 2.6 lần so với mô hình gốc */
+    private static final double KNIFE_SCALE = 2.6;
     /** Nửa độ dày lưỡi dao và katana, đơn vị gốc */
     private static final double KNIFE_HALF = 0.006;
     private static final double KATANA_HALF = 0.003;

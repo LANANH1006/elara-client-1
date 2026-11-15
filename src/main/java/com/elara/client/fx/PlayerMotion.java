@@ -96,7 +96,8 @@ public final class PlayerMotion {
                 spreadTarget = 1f;
                 flapTarget = s.vy < -0.3 ? 0.35f : 0.12f;
             } else if (s.moving) {
-                spreadTarget = 0.8f;
+                // Đang đi bộ hoặc chạy: xòe hết cỡ
+                spreadTarget = 1f;
                 flapTarget = 0.6f;
             } else {
                 spreadTarget = 0.6f;

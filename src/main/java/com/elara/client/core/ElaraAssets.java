@@ -14,6 +14,10 @@ import java.io.InputStream;
  */
 public final class ElaraAssets {
     public static final Identifier TITLE_BG = Identifier.of("elaraclient", "runtime/title_bg");
+    /** Texture lông vũ 256x256 cho cánh ảo (RGBA, nền trong suốt) */
+    public static final Identifier WING_FEATHER = Identifier.of("elaraclient", "runtime/wings_feather");
+    /** Vết nứt khiên 64x64 cho Shield Breaker */
+    public static final Identifier SHIELD_CRACK = Identifier.of("elaraclient", "runtime/shield_crack");
 
     private static boolean tried = false;
 
@@ -24,6 +28,8 @@ public final class ElaraAssets {
         if (tried) return;
         tried = true;
         load("assets/elaraclient/textures/gui/title_bg.png", TITLE_BG);
+        load("assets/elaraclient/textures/entity/wings_feather.png", WING_FEATHER);
+        load("assets/elaraclient/textures/gui/shield_crack.png", SHIELD_CRACK);
     }
 
     private static void load(String path, Identifier id) {

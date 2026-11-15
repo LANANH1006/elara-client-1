@@ -63,10 +63,9 @@ public final class Effects {
             b.flush();
         }
         if (ElaraConfig.isOn(Feature.VIRTUAL_WINGS)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            Wings.draw(b, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
+            // Cánh tự tạo batch riêng: WorldBatch cho khung dây và khói, TexBatch cho lông vũ có texture
+            Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
                     ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
-            b.flush();
         }
         if (ElaraConfig.isOn(Feature.CAPE) && !BROKEN.contains(Feature.CAPE)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
