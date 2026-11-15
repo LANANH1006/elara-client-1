@@ -106,5 +106,7 @@ public final class Effects {
             BuildGuide.draw(b);
             b.flush();
         }
+        // Vũ khí 3D ở góc nhìn thứ ba: chỉ vẽ khi mixin đã đánh dấu người chơi local trong lượt này
+        Weapon3D.drawThirdPersonIfMarked(cam);
     }
 }
