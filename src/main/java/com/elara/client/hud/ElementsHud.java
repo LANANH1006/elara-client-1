@@ -2,6 +2,7 @@ package com.elara.client.hud;
 
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import com.elara.client.fx.LowFire;
 import com.elara.client.i18n.Lang;
 import com.elara.client.ui.IosStyle;
 import net.minecraft.client.MinecraftClient;
@@ -29,10 +30,12 @@ public final class ElementsHud {
         if (client.options == null || client.options.hudHidden || client.player == null) return;
         if (ElaraConfig.isOn(Feature.KEYSTROKES)) drawKeystrokes(ctx, client);
         if (ElaraConfig.isOn(Feature.SYSINFO)) drawSysInfo(ctx, client);
+        if (ElaraConfig.isOn(Feature.TARGET_HUD)) TargetHud.draw(ctx, client);
+        LowFire.render(ctx);
     }
 
     /** Đưa gốc tọa độ về góc trên trái của HUD đã áp dụng vị trí và tỉ lệ. Nhớ gọi pop(). */
-    private static void begin(DrawContext ctx, MinecraftClient client, Feature f) {
+    static void begin(DrawContext ctx, MinecraftClient client, Feature f) {
         ElaraConfig.Layout l = ElaraConfig.layout(f);
         int sw = client.getWindow().getScaledWidth();
         int sh = client.getWindow().getScaledHeight();

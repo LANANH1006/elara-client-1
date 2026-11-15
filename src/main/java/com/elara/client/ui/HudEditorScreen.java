@@ -14,7 +14,7 @@ import net.minecraft.text.Text;
  * (xem HudBounds). Vị trí lưu theo pixel GUI, giữ khung nằm gọn trong màn hình.
  */
 public class HudEditorScreen extends Screen {
-    private static final Feature[] ITEMS = {Feature.KEYSTROKES, Feature.SYSINFO};
+    private static final Feature[] ITEMS = {Feature.KEYSTROKES, Feature.SYSINFO, Feature.TARGET_HUD};
 
     private final Screen parent;
     private Feature dragging = null;

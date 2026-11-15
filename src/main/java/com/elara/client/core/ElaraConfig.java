@@ -166,6 +166,13 @@ public final class ElaraConfig {
             case PIXEL_CROSSHAIR -> { l.xPct = 50; l.yPct = 50; }
             case RAIN_3D -> l.color = 0xFF9FD8FF;
             case WEAPON_3D -> l.color = 0xFF7FE8FF;
+            // Target HUD: giữa phải màn hình, không đè HUD phím và thông số
+            case TARGET_HUD -> { l.xPct = 70; l.yPct = 42; l.color = 0xFF7FD4FF; }
+            case SHIELD_BREAKER -> l.color = 0xFF9EF0FF;
+            case HIT_RIPPLE -> l.color = 0xFF9AE6FF;
+            case AFTERGLOW -> l.color = 0xFFFFE9A8;
+            case SHOCKWAVE -> l.color = 0xFF7FD8FF;
+            case LOW_FIRE -> l.color = 0xFFFF7A2E;
             default -> { }
         }
         return l;

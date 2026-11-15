@@ -15,6 +15,7 @@
     "InGameHudMixin",
     "HeldItemRendererMixin",
     "HeldItemFeatureRendererMixin",
+    "InGameOverlayRendererMixin",
     "BackgroundRendererMixin",
     "SpriteAnimatorMixin",
     "SplashOverlayMixin",

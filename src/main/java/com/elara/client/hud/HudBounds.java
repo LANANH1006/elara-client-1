@@ -15,6 +15,7 @@ public final class HudBounds {
     static {
         SIZES.put(Feature.KEYSTROKES, new int[] {58, 90});
         SIZES.put(Feature.SYSINFO, new int[] {120, 60});
+        SIZES.put(Feature.TARGET_HUD, new int[] {156, 58});
     }
 
     private HudBounds() {}

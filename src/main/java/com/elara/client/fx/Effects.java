@@ -67,6 +67,8 @@ public final class Effects {
             Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
                     ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
         }
+        // Hiệu ứng PvP: sóng đánh trúng, tàn quang, sóng xung kích, phá khiên (tự tạo batch riêng)
+        CombatFx.draw(m, camV);
         if (ElaraConfig.isOn(Feature.CAPE) && !BROKEN.contains(Feature.CAPE)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
             try {

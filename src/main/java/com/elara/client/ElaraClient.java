@@ -10,6 +10,7 @@ import com.elara.client.music.MusicPlayer;
 import com.elara.client.hud.DynamicIslandHud;
 import com.elara.client.hud.CrosshairHud;
 import com.elara.client.hud.ElementsHud;
+import com.elara.client.fx.CombatFx;
 import com.elara.client.fx.Effects;
 import com.elara.client.fx.BuildGuide;
 import com.elara.client.fx.PlayerMotion;
@@ -79,6 +80,7 @@ public class ElaraClient implements ClientModInitializer {
             KnifeAnim.tick(client);
             while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
             HitFx.tick();
+            CombatFx.tick(client);
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
@@ -139,6 +141,7 @@ public class ElaraClient implements ClientModInitializer {
             if (ElaraConfig.isOn(Feature.HIT_EFFECT)) {
                 HitFx.spawn(entity);
             }
+            CombatFx.onAttack(player, entity);
             return ActionResult.PASS;
         });
     }

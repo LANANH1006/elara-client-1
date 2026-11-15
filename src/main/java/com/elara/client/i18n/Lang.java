@@ -228,7 +228,34 @@ public final class Lang {
             e("desc.afk_saver", "Khóa 10 FPS, tầm nhìn 2 chunk, phủ màn hình tối có đồng hồ",
                     "Lock 10 FPS, 2-chunk view, dim screen with a clock"),
             e("afk.status", "Đang treo máy · tiết kiệm pin", "Idle mode · power saving"),
-            e("afk.hint", "Mở menu bằng Right Shift để tắt chế độ này", "Open the menu with Right Shift to turn this off")
+            e("afk.hint", "Mở menu bằng Right Shift để tắt chế độ này", "Open the menu with Right Shift to turn this off"),
+
+            e("feature.target_hud", "Target HUD kính mờ", "Glass target HUD"),
+            e("desc.target_hud", "Khung mục tiêu: đầu, tên, máu, giáp, khiên, khoảng cách, thắng hay thua",
+                    "Target panel: head, name, health, armor, shield, distance, winning or losing"),
+            e("feature.shield_breaker", "Phá khiên (vết nứt 4.5s)", "Shield breaker (4.5s crack)"),
+            e("desc.shield_breaker", "Rìu đánh vỡ khiên: hiện vết nứt và đếm ngược hồi khiên",
+                    "An axe breaks the shield: shows the crack and the recovery countdown"),
+            e("feature.hit_ripple", "Sóng đánh trúng", "Hit ripple"),
+            e("desc.hit_ripple", "Sóng sáng lan trên mục tiêu khi đánh trúng hoặc bị đánh",
+                    "Light wave on the target when you hit or get hit"),
+            e("feature.afterglow", "Tàn quang khi hạ gục", "Afterglow on kill"),
+            e("desc.afterglow", "Mục tiêu tan thành hạt sáng bay lên, có cột tia mờ",
+                    "The target dissolves into rising light with a faint beam"),
+            e("feature.shockwave", "Sóng xung kích mặt đất", "Ground shockwave"),
+            e("desc.shockwave", "Vòng sáng dưới đất khi đập Mace, rơi đánh từ trên cao hoặc tiếp đất mạnh",
+                    "Glowing ring on the ground for mace smashes, falling hits and hard landings"),
+            e("feature.low_fire", "Lửa hạ thấp tùy chỉnh", "Custom low fire"),
+            e("desc.low_fire", "Lửa góc nhìn thứ nhất được hạ thấp và đổi màu",
+                    "First-person fire is lowered and recolored"),
+            e("set.fire_h", "Chiều cao lửa", "Fire height"),
+            e("set.wave_r", "Bán kính sóng", "Wave radius"),
+            e("set.particles", "Số hạt", "Particle count"),
+            e("set.shock_r", "Bán kính sóng đất", "Shockwave radius"),
+            e("target.win", "THẮNG", "WINNING"),
+            e("target.lose", "THUA", "LOSING"),
+            e("target.shield_on", "Khiên: bật", "Shield: up"),
+            e("target.shield_off", "Khiên: tắt", "Shield: down")
     );
 
     private Lang() {}

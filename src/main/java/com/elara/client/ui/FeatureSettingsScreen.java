@@ -68,7 +68,8 @@ public class FeatureSettingsScreen extends Screen {
 
     /** Tính năng có vị trí trên màn hình (kéo được bằng thanh X, Y) */
     private static boolean hasPosition(Feature f) {
-        return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR;
+        return f == Feature.KEYSTROKES || f == Feature.SYSINFO || f == Feature.PIXEL_CROSSHAIR
+                || f == Feature.TARGET_HUD;
     }
 
     /** Tính năng có màu để chọn bằng bảng màu */
@@ -78,7 +79,9 @@ public class FeatureSettingsScreen extends Screen {
                 || f == Feature.HEAD_ACCESSORY || f == Feature.FOOTSTEP_AURA || f == Feature.SWORD_TRAIL
                 || f == Feature.PVP_REACH || f == Feature.HIT_EFFECT || f == Feature.RAIN_3D
                 || f == Feature.CAPE || f == Feature.BODY_GLOW || f == Feature.RIBBON_TRAIL
-                || f == Feature.WEAPON_3D;
+                || f == Feature.WEAPON_3D || f == Feature.TARGET_HUD || f == Feature.SHIELD_BREAKER
+                || f == Feature.HIT_RIPPLE || f == Feature.AFTERGLOW || f == Feature.SHOCKWAVE
+                || f == Feature.LOW_FIRE;
     }
 
     /** Danh sách chọn chế độ hiển thị dùng chung cho cánh và vòng nhảy */
@@ -189,6 +192,10 @@ public class FeatureSettingsScreen extends Screen {
                         l -> l.get("style", 0), (l, v) -> l.put("style", v), weapons));
                 list.add(new Ctl(Lang.get("set.size"), "%", 50, 200, l -> l.scalePct, (l, v) -> l.scalePct = v, null));
             }
+            case HIT_RIPPLE -> list.add(slider(Lang.get("set.wave_r"), "", 5, 30, "radius", 10));
+            case AFTERGLOW -> list.add(slider(Lang.get("set.particles"), "", 20, 150, "count", 60));
+            case SHOCKWAVE -> list.add(slider(Lang.get("set.shock_r"), "", 5, 60, "radius", 25));
+            case LOW_FIRE -> list.add(slider(Lang.get("set.fire_h"), "%", 5, 60, "height", 22));
             case KNIFE_ANIM -> {
                 list.add(slider(Lang.get("set.hand_x"), "", -50, 50, "hx", 0));
                 list.add(slider(Lang.get("set.hand_y"), "", -50, 50, "hy", 0));
