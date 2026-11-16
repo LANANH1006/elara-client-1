@@ -29,6 +29,7 @@ public enum Feature {
     CAPE(Group.EFFECTS),
     BODY_GLOW(Group.EFFECTS),
     RIBBON_TRAIL(Group.EFFECTS),
+    AIRPLANE_MORPH(Group.EFFECTS),
 
     KNIFE_ANIM(Group.KNIVES),
     SWORD_TRAIL(Group.KNIVES),
@@ -50,6 +51,7 @@ public enum Feature {
     CHROMA_WORLD(Group.WORLD),
     MIST_GLASS(Group.WORLD),
     SOFT_SHADOW(Group.WORLD),
+    LITE_SHADER(Group.WORLD),
 
     MUSIC_PLAYER(Group.MISC),
     LYRICS_ISLAND(Group.MISC),

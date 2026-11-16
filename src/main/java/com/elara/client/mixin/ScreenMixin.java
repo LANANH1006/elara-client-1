@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screen.MessageScreen;
 import net.minecraft.client.gui.screen.ProgressScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.render.RenderLayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -33,6 +34,8 @@ public abstract class ScreenMixin {
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$iosBackground(DrawContext ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        // Túi đồ và rương: để nền gốc của game, không vẽ kính đè lên
+        if (((Object) this) instanceof HandledScreen<?>) return;
         elara$drawBackdrop(ctx);
         ci.cancel();
     }
@@ -42,6 +45,7 @@ public abstract class ScreenMixin {
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$iosPanorama(DrawContext ctx, float delta, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        if (((Object) this) instanceof HandledScreen<?>) return;
         elara$drawBackdrop(ctx);
         ci.cancel();
     }

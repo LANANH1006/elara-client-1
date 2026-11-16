@@ -54,9 +54,14 @@ public final class SoftShadow {
         }
     }
 
+    /** Bóng mềm bật khi tính năng Bóng mềm hoặc Elara Lite Shader được bật */
+    public static boolean enabled() {
+        return ElaraConfig.isOn(Feature.SOFT_SHADOW) || ElaraConfig.isOn(Feature.LITE_SHADER);
+    }
+
     private static void tickInner(MinecraftClient client) {
         count = 0;
-        if (!ElaraConfig.isOn(Feature.SOFT_SHADOW)) return;
+        if (!enabled()) return;
         if (client.world == null || client.player == null) return;
         World world = client.world;
         PlayerEntity me = client.player;

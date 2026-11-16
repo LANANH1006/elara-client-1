@@ -7,6 +7,7 @@ import com.elara.client.core.Feature;
 import com.elara.client.core.Warmup;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
@@ -33,7 +34,9 @@ public final class Effects {
         Matrix4f m = ctx.matrixStack().peek().getPositionMatrix();
         float a = PlayerTracker.alpha();
         // Sau khi vào map, vài tick đầu tạm dừng các hiệu ứng nặng (xem Warmup)
-        boolean heavy = Warmup.ready();
+        // Đang mở túi đồ hoặc rương: tạm dừng toàn bộ hiệu ứng thế giới của Elara để đỡ tụt FPS
+        if (client.currentScreen instanceof HandledScreen<?>) return;
+        boolean heavy = Warmup.heavy();
 
         if (ElaraConfig.isOn(Feature.JUMP_RING)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
@@ -88,7 +91,7 @@ public final class Effects {
         // Thế giới sống động: bầu trời, gợn sóng mưa, hạt môi trường, Mist/Glass/Bokeh (có try/catch riêng)
         if (heavy) WorldFx.draw(m, camV, client);
         // Bóng mềm dưới chân: đĩa tròn mờ, mờ dần khi nhảy
-        if (heavy && ElaraConfig.isOn(Feature.SOFT_SHADOW) && !shadowBroken) {
+        if (heavy && SoftShadow.enabled() && !shadowBroken) {
             try {
                 SoftShadow.draw(m, camV);
             } catch (Throwable ex) {
@@ -149,6 +152,7 @@ public final class Effects {
             b.flush();
         }
         // Vũ khí 3D ở góc nhìn thứ ba: chỉ vẽ khi mixin đã đánh dấu người chơi local trong lượt này
+        if (heavy && ElaraConfig.isOn(Feature.AIRPLANE_MORPH)) Airplane.draw(m, client, camV, a);
         if (heavy) Weapon3D.drawThirdPersonIfMarked(cam);
     }
 }

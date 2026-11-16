@@ -531,7 +531,7 @@ public final class MusicPlayer {
         c.setConnectTimeout(10_000);
         c.setReadTimeout(20_000);
         c.setInstanceFollowRedirects(true);
-        c.setRequestProperty("User-Agent", "ElaraClient");
+        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
         int code = c.getResponseCode();
         if (code >= 400) throw new IOException("HTTP " + code);
         return c.getInputStream();

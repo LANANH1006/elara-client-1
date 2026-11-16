@@ -49,8 +49,8 @@ public class MusicScreen extends Screen {
 
     private int urlX() { return px + 12; }
     private int urlY() { return py + 26; }
-    private int urlW() { return pw - 100; }
-    private int pasteX() { return px + pw - 84; }
+    private int urlW() { return pw - 128; }
+    private int pasteX() { return px + pw - 112; }
     private int playUrlX() { return px + pw - 44; }
     private int rescanX() { return px + pw - 64; }
     private int listY(int i) { return py + 70 + i * ROW_H; }
@@ -74,7 +74,7 @@ public class MusicScreen extends Screen {
         String shown = empty ? Lang.get("snd.url") : url.text() + (url.focused() ? url.caret() : "");
         ctx.drawText(textRenderer, Text.literal(textRenderer.trimToWidth(shown, urlW() - 8)),
                 urlX() + 4, urlY() + 4, empty ? IosStyle.TEXT_DIM : IosStyle.TEXT, false);
-        button(ctx, pasteX(), urlY(), 36, 16, Lang.get("snd.paste"), mouseX, mouseY);
+        button(ctx, pasteX(), urlY(), 56, 16, Lang.get("snd.paste"), mouseX, mouseY);
         button(ctx, playUrlX(), urlY(), 36, 16, Lang.get("snd.play"), mouseX, mouseY);
 
         // Trạng thái: đang tải, lỗi, hoặc tên bài đang phát
@@ -174,7 +174,7 @@ public class MusicScreen extends Screen {
             return true;
         }
         url.setFocused(false);
-        if (inside(mx, my, pasteX(), urlY(), 36, 16)) {
+        if (inside(mx, my, pasteX(), urlY(), 56, 16)) {
             url.setText(client.keyboard.getClipboard());
             url.setFocused(true);
             return true;

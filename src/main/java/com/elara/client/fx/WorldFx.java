@@ -132,7 +132,8 @@ public final class WorldFx {
 
     /** Có đang đổi màu trời không: Bầu trời sống động hoặc Chroma World */
     public static boolean skyActive() {
-        return ElaraConfig.isOn(Feature.WORLD_SKY) || ElaraConfig.isOn(Feature.CHROMA_WORLD);
+        return ElaraConfig.isOn(Feature.WORLD_SKY) || ElaraConfig.isOn(Feature.CHROMA_WORLD)
+                || ElaraConfig.isOn(Feature.LITE_SHADER);
     }
 
     /**
@@ -150,6 +151,10 @@ public final class WorldFx {
             double k = strength * (((tint >>> 24) & 0xFF) / 255.0);
             Vec3d c = rgb(tint);
             out = new Vec3d(out.x + (c.x - out.x) * k, out.y + (c.y - out.y) * k, out.z + (c.z - out.z) * k);
+        }
+        if (ElaraConfig.isOn(Feature.LITE_SHADER)) {
+            // Elara Lite Shader: trời trong hơn và ấm hơn một chút, chỉ đổi màu nền trời, không cần shader
+            out = new Vec3d(Math.min(1.0, out.x * 0.97), Math.min(1.0, out.y * 1.03), Math.min(1.0, out.z * 1.10));
         }
         return out;
     }

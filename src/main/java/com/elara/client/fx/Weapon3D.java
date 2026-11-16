@@ -242,26 +242,29 @@ public final class Weapon3D {
 
     // ---------- Góc nhìn thứ ba ----------
 
+    /** Đang vẽ người chơi local. Được đặt ngay trước khi vẽ mỗi thực thể (EntityRenderDispatcherMixin). */
+    private static volatile boolean localRendering;
+
+    public static void setRenderingLocal(boolean on) {
+        localRendering = on;
+    }
+
+    public static boolean isRenderingLocalPlayer() {
+        return localRendering;
+    }
+
     /**
-     * Mixin gọi khi game vẽ vật cầm của một thực thể. Trả về true chỉ khi đó là người chơi local
-     * ở góc nhìn thứ ba, đang cầm kiếm ở tay chính và tay phụ trống. Vị trí được đối chiếu với
-     * ma trận: phần dịch chuyển của ma trận bằng vị trí thực thể trừ camera.
+     * Trả về true khi vật cầm gốc của người chơi local nên được thay bằng dao 3D: góc nhìn thứ ba,
+     * đang cầm kiếm ở tay chính, tay phụ trống, không mở màn hình nào. Người chơi local được nhận biết
+     * nhờ setRenderingLocal, nên không cần đối chiếu vị trí (vị trí cũ làm nhầm khi hai người đứng sát).
      */
     public static boolean replacesThirdPerson(MinecraftClient client, MatrixStack m) {
-        if (broken || !ElaraConfig.isOn(Feature.WEAPON_3D)) return false;
-        if (client.player == null || client.gameRenderer == null || client.options == null) return false;
+        if (broken || !ElaraConfig.isOn(Feature.WEAPON_3D) || !Warmup.heavy()) return false;
+        if (client.player == null || client.options == null) return false;
+        if (client.currentScreen != null) return false;
         if (client.options.getPerspective().isFirstPerson()) return false;
         if (!(client.player.getMainHandStack().getItem() instanceof SwordItem)) return false;
-        if (!client.player.getOffHandStack().isEmpty()) return false;
-
-        Vec3d cam = client.gameRenderer.getCamera().getPos();
-        Matrix4f pm = m.peek().getPositionMatrix();
-        double dx = client.player.getX() - cam.x;
-        double dy = client.player.getY() - cam.y;
-        double dz = client.player.getZ() - cam.z;
-        return Math.abs(pm.get(3, 0) - dx) < 0.35
-                && Math.abs(pm.get(3, 1) - dy) < 0.35
-                && Math.abs(pm.get(3, 2) - dz) < 0.35;
+        return client.player.getOffHandStack().isEmpty();
     }
 
     /** Mixin đánh dấu khung hình này cần vẽ vũ khí 3D thay cho bản gốc */

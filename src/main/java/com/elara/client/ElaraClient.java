@@ -88,16 +88,17 @@ public class ElaraClient implements ClientModInitializer {
             BuildGuide.tick(client);
             KnifeAnim.tick(client);
             // Tính toán thế giới và bóng: có try/catch riêng. Vài tick đầu sau khi vào map thì tạm dừng.
-            if (Warmup.ready()) {
+            if (Warmup.heavy()) {
                 WorldFx.tick(client);
                 SoftShadow.tick(client);
             }
-            // Cấu hình không ghi theo tick: chỉ ghi khi đổi màn hình hoặc khi game tắt (xem ElaraConfig)
+            // Cấu hình: chỉ kiểm tra một cờ, ghi sau khoảng 300 ms kể từ thay đổi cuối (xem ElaraConfig)
+            ElaraConfig.tick();
             // Nhận skin tải về và đẩy texture khi có đổi (việc upload chạy trên luồng này, tức render thread)
             SkinStore.tickMain();
             while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
             HitFx.tick();
-            if (Warmup.ready()) CombatFx.tick(client);
+            if (Warmup.heavy()) CombatFx.tick(client);
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)

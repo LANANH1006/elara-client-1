@@ -1,8 +1,12 @@
 package com.elara.client.core;
 
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+
 /**
- * Thời gian chờ sau khi vào server hoặc map. Trong JOIN_TICKS tick đầu (khoảng 2 giây), các hiệu ứng nặng
- * (thế giới, bóng mềm, cánh, vũ khí 3D, PvP) tạm dừng, để game tải xong chunk và ổn định mạng trước.
+ * Hai việc tạm dừng hiệu ứng nặng:
+ * 1. Thời gian chờ sau khi vào server/map: JOIN_TICKS tick đầu (khoảng 2 giây) game tải chunk trước.
+ * 2. Khi đang mở túi đồ hoặc rương (HandledScreen): không vẽ hiệu ứng 3D phía sau để đỡ tụt FPS.
  *
  * Chỉ ghi trên luồng chính; đọc có volatile để luồng khác (nếu có) thấy giá trị mới nhất.
  */
@@ -23,8 +27,15 @@ public final class Warmup {
         if (left > 0) left--;
     }
 
-    /** true khi đã hết thời gian chờ và các hiệu ứng nặng được phép chạy */
+    /** true khi đã hết thời gian chờ (không tính màn hình túi đồ) */
     public static boolean ready() {
         return left <= 0;
+    }
+
+    /** true khi được phép chạy hiệu ứng nặng: đã hết thời gian chờ và không đang mở túi đồ/rương */
+    public static boolean heavy() {
+        if (left > 0) return false;
+        MinecraftClient client = MinecraftClient.getInstance();
+        return client == null || !(client.currentScreen instanceof HandledScreen<?>);
     }
 }

@@ -14,8 +14,8 @@ import java.util.Map;
  * Gradient gộp tối đa GRADIENT_GROUP dòng, màu lấy ở giữa nhóm. Mắt khó thấy khác biệt ở độ chuyển này.
  */
 public final class IosStyle {
-    public static final int GLASS = 0x9E3A3A3C;       // kính xám, alpha khoảng 0.62
-    public static final int GLASS_TOP = 0xB0505055;   // tint sáng hơn ở mép trên kính
+    public static final int GLASS = 0xB83A3A3C;       // kính xám, alpha 0.72: một lớp, không blur nhiều lớp
+    public static final int GLASS_TOP = 0xB8505055;   // tint sáng hơn ở mép trên kính
     public static final int GLASS_EDGE = 0x66FFFFFF;  // viền sáng 1px
     public static final int TILE = 0x40FFFFFF;        // nền tab đang chọn
     public static final int ACCENT = 0xFF0A84FF;      // xanh dương iOS
@@ -90,8 +90,8 @@ public final class IosStyle {
      * sáng ở cạnh trên và mờ dần ở cạnh dưới, thân kính trong suốt có tint sáng phía trên.
      */
     public static void glass(DrawContext ctx, int x, int y, int w, int h, int radius) {
-        roundedGradient(ctx, x - 1, y - 1, w + 2, h + 2, radius + 1, 0xC8FFFFFF, 0x26FFFFFF);
-        roundedGradient(ctx, x, y, w, h, radius, GLASS_TOP, GLASS);
+        rounded(ctx, x - 1, y - 1, w + 2, h + 2, radius + 1, GLASS_EDGE);
+        rounded(ctx, x, y, w, h, radius, GLASS);
     }
 
     /** Khung kính lớn (menu, bảng cài đặt) */

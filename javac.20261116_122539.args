@@ -1,0 +1,4 @@
+-proc:none
+-d
+/tmp/elara-syntax-check
+src/main/java/com/elara/client/fx/Weapon3D.java

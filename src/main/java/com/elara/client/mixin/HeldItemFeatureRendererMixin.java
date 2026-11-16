@@ -10,9 +10,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Góc nhìn thứ ba: khi người chơi local đang cầm kiếm, bỏ vật cầm gốc của game rồi
- * để Weapon3D vẽ dao CS2 / Katana 3D. Chỉ tác động tới người chơi local, không ảnh hưởng người khác.
- * require = 0: nếu chữ ký phương thức khác với dự kiến thì mixin bị bỏ qua, game vẫn chạy bình thường.
+ * Góc nhìn thứ ba (F5, FreeLook): khi người chơi local đang cầm kiếm, bỏ vật cầm gốc của game rồi
+ * để Weapon3D vẽ dao CS2 / Katana 3D. Người chơi local được nhận biết nhờ EntityRenderDispatcherMixin,
+ * nên người chơi khác đứng sát không bị thay nhầm.
+ *
+ * Chữ ký dùng ArmedEntityRenderState (kiểu xóa của S trong HeldItemFeatureRenderer 1.21.4).
+ * require = 0: nếu chữ ký khác thì mixin bị bỏ qua, game vẫn chạy bình thường.
  */
 @Mixin(HeldItemFeatureRenderer.class)
 public abstract class HeldItemFeatureRendererMixin {
@@ -20,12 +23,13 @@ public abstract class HeldItemFeatureRendererMixin {
     @Inject(
             method = "render(Lnet/minecraft/client/util/math/MatrixStack;"
                     + "Lnet/minecraft/client/render/VertexConsumerProvider;"
-                    + "ILnet/minecraft/client/render/entity/state/LivingEntityRenderState;FF)V",
+                    + "ILnet/minecraft/client/render/entity/state/ArmedEntityRenderState;FF)V",
             at = @At("HEAD"),
             cancellable = true,
             require = 0
     )
     private void elara$thirdPersonWeapon(MatrixStack matrices, CallbackInfo ci) {
+        if (!Weapon3D.isRenderingLocalPlayer()) return;
         if (Weapon3D.replacesThirdPerson(MinecraftClient.getInstance(), matrices)) {
             Weapon3D.markThirdPerson();
             ci.cancel();

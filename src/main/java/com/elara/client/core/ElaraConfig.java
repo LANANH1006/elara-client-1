@@ -21,9 +21,9 @@ import java.util.concurrent.Executors;
 /**
  * Lưu cấu hình vào config/elara-client.json.
  *
- * Lưu: mỗi thay đổi chỉ đặt cờ dirty, không kiểm tra theo tick. Việc ghi ra đĩa xảy ra đúng một lần
- * khi màn hình đổi (đóng menu) nếu có dirty, và một lần khi game tắt. Ghi chạy ở luồng phụ qua file tạm
- * rồi đổi tên, nên game không khựng và file không hỏng giữa chừng.
+ * Lưu: mỗi thay đổi đặt cờ dirty. Sau khoảng 300 ms yên lặng thì ghi (gộp các lần bấm hoặc kéo thanh trượt),
+ * và ghi ngay khi màn hình đổi hoặc khi game tắt. Tick chỉ kiểm tra một cờ boolean khi không có đổi.
+ * Ghi chạy ở luồng phụ qua file tạm rồi đổi tên, nên game không khựng và file không hỏng giữa chừng.
  */
 public final class ElaraConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -100,6 +100,10 @@ public final class ElaraConfig {
     private static long written = 0;
     /** Có thay đổi chưa ghi ra đĩa. Chỉ đọc và ghi trên luồng chính. */
     private static boolean dirty = false;
+    /** Thời điểm bắt đầu có thay đổi chưa ghi (ms), 0 nếu không có */
+    private static long dirtySince = 0L;
+    /** Trễ sau thay đổi cuối để gộp nhiều lần bấm hoặc kéo thành một lần ghi */
+    private static final long WRITE_DELAY_MS = 300L;
 
     private ElaraConfig() {}
 
@@ -303,7 +307,23 @@ public final class ElaraConfig {
         }
     }
 
-    /** Đánh dấu cần ghi. Không ghi ngay, để không tốn IO khi người chơi bấm liên tục. */
+    /** Mỗi tick trên luồng chính. Không có đổi thì chỉ kiểm tra một cờ; có đổi và đã yên đủ WRITE_DELAY_MS thì ghi. */
+    public static void tick() {
+        if (!dirty) {
+            dirtySince = 0L;
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (dirtySince == 0L) {
+            dirtySince = now;
+            return;
+        }
+        if (now - dirtySince < WRITE_DELAY_MS) return;
+        dirtySince = 0L;
+        flushIfDirty();
+    }
+
+    /** Đánh dấu cần ghi. Ghi thật sau khoảng WRITE_DELAY_MS, khi đổi màn hình, hoặc khi game tắt. */
     public static void save() {
         dirty = true;
     }
