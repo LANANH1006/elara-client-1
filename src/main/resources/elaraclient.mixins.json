@@ -24,6 +24,7 @@
     "EntityRendererBadgeMixin",
     "PlayerListHudMixin",
     "ClientWorldSkyMixin",
-    "AbstractClientPlayerEntityMixin"
+    "AbstractClientPlayerEntityMixin",
+    "MinecraftClientMixin"
   ]
 }

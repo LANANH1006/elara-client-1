@@ -9,7 +9,16 @@ import net.minecraft.text.Text;
 /** Nền và logo dùng cho các màn hình tải: lấy ảnh từ jar nên resource pack không đè được. */
 public final class LoadingBackground {
 
+    /** Gradient hồng Sakura trầm, mờ dịu, dùng nền màn hình tải map */
+    private static final int GRADIENT_TOP = 0xFF2A1B33;
+    private static final int GRADIENT_BOTTOM = 0xFF6E3B5E;
+
     private LoadingBackground() {}
+
+    /** Nền gradient một lần vẽ (một draw-call), không tải ảnh, không tạo đối tượng mới mỗi khung hình */
+    public static void drawGradient(DrawContext ctx, int w, int h) {
+        ctx.fillGradient(0, 0, w, h, GRADIENT_TOP, GRADIENT_BOTTOM);
+    }
 
     /** Chỉ nền: ảnh title_bg kèm lớp tối */
     public static void drawBackdrop(DrawContext ctx) {

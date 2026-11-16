@@ -3,6 +3,7 @@ package com.elara.client.fx;
 import com.elara.client.core.Guard;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Warmup;
 import com.elara.client.core.Feature;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -153,6 +154,8 @@ public final class Weapon3D {
      */
     public static boolean drawFirstPerson(MatrixStack m, AbstractClientPlayerEntity player, ItemStack stack,
                                           float swing, float equip) {
+        // Sau khi vào map, vài tick đầu để vật cầm gốc của game (xem Warmup)
+        if (!Warmup.ready()) return false;
         if (!active(stack)) return false;
         int style = style();
         float size = size();

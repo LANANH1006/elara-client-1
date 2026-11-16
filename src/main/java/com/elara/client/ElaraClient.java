@@ -5,6 +5,8 @@ import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.LagFix;
+import com.elara.client.core.Warmup;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import com.elara.client.hud.LyricsHud;
 import com.elara.client.music.MusicPlayer;
 import com.elara.client.hud.DynamicIslandHud;
@@ -78,21 +80,24 @@ public class ElaraClient implements ClientModInitializer {
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            Warmup.tick();
             CullingManager.tick();
             KeyTracker.tick(client);
             PlayerTracker.tick(client);
             PlayerMotion.tick(client);
             BuildGuide.tick(client);
             KnifeAnim.tick(client);
-            // Tính toán thế giới và bóng: có try/catch riêng, mọi việc đọc block nằm trong tick
-            WorldFx.tick(client);
-            SoftShadow.tick(client);
-            // Tự động lưu cấu hình (kiểm tra mỗi 20 tick, ghi ở luồng phụ) và nhận skin tải về
-            ElaraConfig.tick();
+            // Tính toán thế giới và bóng: có try/catch riêng. Vài tick đầu sau khi vào map thì tạm dừng.
+            if (Warmup.ready()) {
+                WorldFx.tick(client);
+                SoftShadow.tick(client);
+            }
+            // Cấu hình không ghi theo tick: chỉ ghi khi đổi màn hình hoặc khi game tắt (xem ElaraConfig)
+            // Nhận skin tải về và đẩy texture khi có đổi (việc upload chạy trên luồng này, tức render thread)
             SkinStore.tickMain();
             while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
             HitFx.tick();
-            CombatFx.tick(client);
+            if (Warmup.ready()) CombatFx.tick(client);
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
 
             // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
@@ -158,9 +163,12 @@ public class ElaraClient implements ClientModInitializer {
             if (ElaraConfig.isOn(Feature.HIT_EFFECT)) {
                 HitFx.spawn(entity);
             }
-            CombatFx.onAttack(player, entity);
+            if (Warmup.ready()) CombatFx.onAttack(player, entity);
             return ActionResult.PASS;
         });
+
+        // Vừa vào server hoặc map: đặt thời gian chờ ngắn, hiệu ứng nặng sẽ bật lại sau đó
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> Warmup.onJoin());
 
         // Khi game tắt: ghi đồng bộ cấu hình và nét vẽ skin, để không mất thay đổi cuối cùng
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {

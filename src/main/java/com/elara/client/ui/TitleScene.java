@@ -21,7 +21,9 @@ public final class TitleScene {
     private static final double CAM_HEIGHT = 2.6;
     private static final double FOCUS_Y = 1.2;
     private static final double POND_R = 2.6;
-    private static final int POND_SEGS = 24;
+    private static final int POND_SEGS = 16;
+    /** Số hạt sao tối đa ở màn hình chính: giữ thấp để máy điện thoại không nóng */
+    private static final int STAR_COUNT = 20;
     private static final float REFLECT_ALPHA = 0.32f;
 
     /** Màu trời theo giờ: {đỉnh, chân trời} */
@@ -309,7 +311,7 @@ public final class TitleScene {
 
     private static double[][] buildStars() {
         Random r = new Random(11);
-        double[][] s = new double[60][2];
+        double[][] s = new double[STAR_COUNT][2];
         for (double[] p : s) {
             p[0] = r.nextDouble();
             p[1] = r.nextDouble();

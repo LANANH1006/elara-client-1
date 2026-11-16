@@ -14,7 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Thay skin của người chơi local bằng skin tùy chỉnh. Chỉ đổi texture và kiểu tay, giữ nguyên cape và elytra.
- * require = 0: nếu bản game không có phương thức này thì mixin bỏ qua, game vẫn chạy với skin gốc.
+ *
+ * An toàn khi vào map: nếu chưa bật skin tùy chỉnh thì thoát ngay, không chạm vào gì. Mọi việc tạo texture
+ * đều chạy trên render thread (trong SkinStore). Khi texture chưa sẵn sàng thì trả về skin gốc của game.
+ * Lỗi bất kỳ thì giữ skin gốc, không làm sập. require = 0: không khớp thì bỏ qua.
  */
 @Mixin(AbstractClientPlayerEntity.class)
 public abstract class AbstractClientPlayerEntityMixin {
@@ -22,7 +25,9 @@ public abstract class AbstractClientPlayerEntityMixin {
     @Inject(method = "getSkinTextures", at = @At("RETURN"), cancellable = true, require = 0)
     private void elara$customSkin(CallbackInfoReturnable<SkinTextures> cir) {
         try {
+            if (!ElaraConfig.hasCustomSkin()) return;
             MinecraftClient client = MinecraftClient.getInstance();
+            if (client == null || client.player == null) return;
             // Chỉ người chơi local: không có nguồn skin tùy chỉnh cho người khác
             if ((Object) this != client.player) return;
             Identifier id = SkinStore.activeTexture();

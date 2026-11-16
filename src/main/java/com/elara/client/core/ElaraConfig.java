@@ -21,16 +21,14 @@ import java.util.concurrent.Executors;
 /**
  * Lưu cấu hình vào config/elara-client.json.
  *
- * Tự động lưu: mọi thay đổi (bật/tắt, màu, thanh trượt, vị trí HUD, tab, vị trí cuộn, skin, nhạc) được
- * phát hiện trên luồng chính mỗi CHECK_EVERY_TICKS tick bằng cách so chuỗi JSON. Khi có đổi thì việc ghi
- * ra đĩa chạy ở luồng phụ, qua file tạm rồi đổi tên, nên game không khựng và file không bị hỏng giữa chừng.
- * Lúc game tắt thì ghi đồng bộ để không mất thay đổi cuối cùng.
+ * Lưu: mỗi thay đổi chỉ đặt cờ dirty, không kiểm tra theo tick. Việc ghi ra đĩa xảy ra đúng một lần
+ * khi màn hình đổi (đóng menu) nếu có dirty, và một lần khi game tắt. Ghi chạy ở luồng phụ qua file tạm
+ * rồi đổi tên, nên game không khựng và file không hỏng giữa chừng.
  */
 public final class ElaraConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("elara-client.json");
     private static final Path TMP = PATH.resolveSibling("elara-client.json.tmp");
-    private static final int CHECK_EVERY_TICKS = 20;
     private static final int MAX_HISTORY = 8;
 
     /** Gson đọc/ghi các trường public, nên giữ chúng là public */
@@ -100,8 +98,8 @@ public final class ElaraConfig {
     private static long seq = 0;
     /** Số thứ tự của bản đã ghi ra đĩa, đọc và ghi dưới WRITE_LOCK. Bản cũ hơn sẽ bị bỏ qua. */
     private static long written = 0;
-    private static String lastJson = null;
-    private static int sinceCheck = 0;
+    /** Có thay đổi chưa ghi ra đĩa. Chỉ đọc và ghi trên luồng chính. */
+    private static boolean dirty = false;
 
     private ElaraConfig() {}
 
@@ -109,14 +107,17 @@ public final class ElaraConfig {
     public static int islandOffsetY() { return data.islandOffsetY; }
     public static int islandX() { return data.islandX; }
 
-    public static void setIslandHeight(int v) { data.islandHeight = clamp(v, 20, 40); }
-    public static void setIslandOffsetY(int v) { data.islandOffsetY = clamp(v, 0, 2000); }
-    public static void setIslandX(int v) { data.islandX = clamp(v, -1, 4000); }
+    public static void setIslandHeight(int v) { data.islandHeight = clamp(v, 20, 40); dirty = true; }
+    public static void setIslandOffsetY(int v) { data.islandOffsetY = clamp(v, 0, 2000); dirty = true; }
+    public static void setIslandX(int v) { data.islandX = clamp(v, -1, 4000); dirty = true; }
+
+    /** Đánh dấu có thay đổi cần ghi. Việc ghi thật diễn ra khi đổi màn hình hoặc khi game tắt. */
+    public static void markDirty() { dirty = true; }
 
     /** Màu chủ đạo của menu: nút gạt, tab đang chọn, thanh trượt */
     public static int themeAccent() { return data.themeAccent; }
 
-    public static void setThemeAccent(int argb) { data.themeAccent = argb | 0xFF000000; }
+    public static void setThemeAccent(int argb) { data.themeAccent = argb | 0xFF000000; dirty = true; }
 
     /** Nền màn hình chính: 0 ảnh tĩnh, 1 cảnh 3D */
     public static int titleMode() { return data.titleMode; }
@@ -170,6 +171,7 @@ public final class ElaraConfig {
     public static void resetLayout(Feature f) {
         if (data.layouts == null) data.layouts = new LinkedHashMap<>();
         data.layouts.put(f.name(), defaultLayout(f));
+        dirty = true;
     }
 
     /** Bật/tắt. Chat Touch mặc định bật, mọi tính năng khác mặc định tắt. */
@@ -179,6 +181,7 @@ public final class ElaraConfig {
 
     public static void toggle(Feature f) {
         data.toggles.put(f.name(), !isOn(f));
+        dirty = true;
     }
 
     public static Layout layout(Feature f) {
@@ -225,7 +228,7 @@ public final class ElaraConfig {
     }
 
     public static LagFix.Backup backup() { return data.lagBackup; }
-    public static void setBackup(LagFix.Backup b) { data.lagBackup = b; }
+    public static void setBackup(LagFix.Backup b) { data.lagBackup = b; dirty = true; }
 
     // ---------- trạng thái menu, skin, nhạc ----------
 
@@ -235,14 +238,17 @@ public final class ElaraConfig {
     public static void setMenuState(int tab, int scroll) {
         data.menuTab = Math.max(0, tab);
         data.menuScroll = Math.max(0, scroll);
+        dirty = true;
     }
 
+    /** Có dùng skin tùy chỉnh không. Mixin skin kiểm tra điều này trước mọi việc khác. */
+    public static boolean hasCustomSkin() { return data.skinOn; }
     public static boolean skinOn() { return data.skinOn; }
-    public static void setSkinOn(boolean on) { data.skinOn = on; }
+    public static void setSkinOn(boolean on) { data.skinOn = on; dirty = true; }
     public static boolean skinSlim() { return data.skinSlim; }
-    public static void setSkinSlim(boolean slim) { data.skinSlim = slim; }
+    public static void setSkinSlim(boolean slim) { data.skinSlim = slim; dirty = true; }
     public static String skinName() { return data.skinName == null ? "" : data.skinName; }
-    public static void setSkinName(String name) { data.skinName = name == null ? "" : name; }
+    public static void setSkinName(String name) { data.skinName = name == null ? "" : name; dirty = true; }
 
     /** Bộ phận skin đang bị ẩn: head, body, larm, rarm, lleg, rleg, outer */
     public static boolean skinHidden(String part) {
@@ -252,12 +258,13 @@ public final class ElaraConfig {
     public static void setSkinHidden(String part, boolean hidden) {
         if (data.skinHidden == null) data.skinHidden = new LinkedHashMap<>();
         data.skinHidden.put(part, hidden);
+        dirty = true;
     }
 
     public static String musicUrl() { return data.musicUrl == null ? "" : data.musicUrl; }
-    public static void setMusicUrl(String url) { data.musicUrl = url == null ? "" : url; }
+    public static void setMusicUrl(String url) { data.musicUrl = url == null ? "" : url; dirty = true; }
     public static int musicVolume() { return data.musicVolume; }
-    public static void setMusicVolume(int v) { data.musicVolume = clamp(v, 0, 100); }
+    public static void setMusicVolume(int v) { data.musicVolume = clamp(v, 0, 100); dirty = true; }
 
     /** Danh sách link đã phát, mới nhất đứng đầu. Trả về bản sửa được. */
     public static List<String> musicHistory() {
@@ -270,6 +277,7 @@ public final class ElaraConfig {
         h.remove(url);
         h.add(0, url);
         while (h.size() > MAX_HISTORY) h.remove(h.size() - 1);
+        dirty = true;
     }
 
     // ---------- đọc và ghi ----------
@@ -295,28 +303,25 @@ public final class ElaraConfig {
         }
     }
 
-    /** Gọi mỗi tick trên luồng chính. Cứ CHECK_EVERY_TICKS tick so với lần ghi trước, đổi thì ghi ở luồng phụ. */
-    public static void tick() {
-        if (++sinceCheck < CHECK_EVERY_TICKS) return;
-        sinceCheck = 0;
-        String json = toJson();
-        if (json.equals(lastJson)) return;
-        lastJson = json;
-        submit(json);
+    /** Đánh dấu cần ghi. Không ghi ngay, để không tốn IO khi người chơi bấm liên tục. */
+    public static void save() {
+        dirty = true;
     }
 
-    /** Ghi ngay, không chờ lần kiểm tra. Việc ghi vẫn ở luồng phụ. */
-    public static void save() {
-        String json = toJson();
-        lastJson = json;
-        submit(json);
+    /**
+     * Gọi khi màn hình đổi (đóng menu, mở màn hình khác). Chỉ ghi khi có dirty, và ghi đúng một lần
+     * rồi xóa cờ. Việc ghi chạy ở luồng phụ. Không được gọi theo tick.
+     */
+    public static void flushIfDirty() {
+        if (!dirty) return;
+        dirty = false;
+        submit(toJson());
     }
 
     /** Ghi đồng bộ khi game tắt, để không mất thay đổi cuối cùng */
     public static void flushNow() {
-        String json = toJson();
-        lastJson = json;
-        writeIfNewer(++seq, json);
+        dirty = false;
+        writeIfNewer(++seq, toJson());
     }
 
     private static String toJson() {

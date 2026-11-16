@@ -4,6 +4,7 @@ import com.elara.client.core.Guard;
 
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import com.elara.client.core.Warmup;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
@@ -31,6 +32,8 @@ public final class Effects {
         Vec3d cam = ctx.camera().getPos();
         Matrix4f m = ctx.matrixStack().peek().getPositionMatrix();
         float a = PlayerTracker.alpha();
+        // Sau khi vào map, vài tick đầu tạm dừng các hiệu ứng nặng (xem Warmup)
+        boolean heavy = Warmup.ready();
 
         if (ElaraConfig.isOn(Feature.JUMP_RING)) {
             WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
@@ -71,7 +74,7 @@ public final class Effects {
             HitFx.draw(b, camV, ElaraConfig.layout(Feature.HIT_EFFECT), ElaraConfig.color(Feature.HIT_EFFECT));
             b.flush();
         }
-        if (ElaraConfig.isOn(Feature.VIRTUAL_WINGS) && !wingsBroken) {
+        if (heavy && ElaraConfig.isOn(Feature.VIRTUAL_WINGS) && !wingsBroken) {
             // Cánh tự tạo batch riêng: WorldBatch cho khung dây và khói, TexBatch cho lông vũ có texture
             try {
                 Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
@@ -83,9 +86,9 @@ public final class Effects {
             }
         }
         // Thế giới sống động: bầu trời, gợn sóng mưa, hạt môi trường, Mist/Glass/Bokeh (có try/catch riêng)
-        WorldFx.draw(m, camV, client);
+        if (heavy) WorldFx.draw(m, camV, client);
         // Bóng mềm dưới chân: đĩa tròn mờ, mờ dần khi nhảy
-        if (ElaraConfig.isOn(Feature.SOFT_SHADOW) && !shadowBroken) {
+        if (heavy && ElaraConfig.isOn(Feature.SOFT_SHADOW) && !shadowBroken) {
             try {
                 SoftShadow.draw(m, camV);
             } catch (Throwable ex) {
@@ -95,7 +98,7 @@ public final class Effects {
             }
         }
         // Hiệu ứng PvP: sóng đánh trúng, tàn quang, sóng xung kích, phá khiên (tự tạo batch riêng)
-        if (!combatBroken) {
+        if (heavy && !combatBroken) {
             try {
                 CombatFx.draw(m, camV);
             } catch (Throwable ex) {
@@ -146,6 +149,6 @@ public final class Effects {
             b.flush();
         }
         // Vũ khí 3D ở góc nhìn thứ ba: chỉ vẽ khi mixin đã đánh dấu người chơi local trong lượt này
-        Weapon3D.drawThirdPersonIfMarked(cam);
+        if (heavy) Weapon3D.drawThirdPersonIfMarked(cam);
     }
 }

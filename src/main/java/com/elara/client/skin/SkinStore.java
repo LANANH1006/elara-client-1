@@ -1,7 +1,9 @@
 package com.elara.client.skin;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Guard;
 import com.elara.client.i18n.Lang;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
@@ -58,6 +60,12 @@ public final class SkinStore {
     /** Có nét vẽ chưa được ghi ra file */
     private static boolean edited;
     private static NativeImageBackedTexture tex;
+    /** Texture đã tạo và upload thành công trên render thread, nên có thể dùng trong game */
+    private static volatile boolean uploaded;
+    /** Đã đặt lịch đẩy texture lên render thread, tránh xếp hàng nhiều lần */
+    private static volatile boolean uploadQueued;
+    /** Lỗi khi tạo texture: tắt skin tùy chỉnh để không báo lỗi mỗi khung hình */
+    private static volatile boolean failed;
 
     private static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "elara-skin-io");
@@ -80,12 +88,16 @@ public final class SkinStore {
     /** Bộ phận: head, body, larm, rarm, lleg, rleg hoặc outer (lớp mũ, áo, tay áo, quần) */
     public static String[] parts() { return PARTS; }
 
-    /** Texture đang dùng trong game, hoặc null nếu chưa lưu skin nào hoặc đã tắt */
+    /**
+     * Texture đang dùng trong game, hoặc null nếu chưa lưu skin nào, đã tắt, hoặc texture chưa sẵn sàng.
+     * Gọi được từ mọi luồng: không tạo texture tại đây, chỉ đặt lịch lên render thread.
+     */
     public static Identifier activeTexture() {
+        if (failed || !ElaraConfig.skinOn()) return null;
         ensureLoaded();
-        if (!ElaraConfig.skinOn() || !saved) return null;
-        if (tex == null || dirty) pushTexture();
-        return TEXTURE;
+        if (!saved) return null;
+        if (!uploaded || dirty) requestUpload();
+        return uploaded ? TEXTURE : null;
     }
 
     /** Gọi trên luồng chính mỗi tick: đẩy texture nếu có đổi, và nhận ảnh tải về */
@@ -103,13 +115,13 @@ public final class SkinStore {
             message = String.format(Lang.get("skin.fetched"), pendingName);
             saveAsync();
         }
-        if (dirty) pushTexture();
+        if (dirty && uploaded) requestUpload();
     }
 
     /** Đảm bảo texture cập nhật trước khi màn hình vẽ canvas */
     public static void refresh() {
         ensureLoaded();
-        if (tex == null || dirty) pushTexture();
+        if (!uploaded || dirty) requestUpload();
     }
 
     // ---------- bộ phận ----------
@@ -365,23 +377,50 @@ public final class SkinStore {
         }
     }
 
-    /** Chỉ gọi trên luồng chính: tạo texture một lần, rồi ghi pixel và upload */
+    /**
+     * Đưa việc tạo hoặc cập nhật texture lên render thread. Đang ở render thread thì làm ngay,
+     * còn không thì xếp vào hàng đợi của RenderSystem và làm ở khung hình kế tiếp.
+     */
+    private static void requestUpload() {
+        if (failed) return;
+        if (RenderSystem.isOnRenderThread()) {
+            pushTexture();
+            return;
+        }
+        if (uploadQueued) return;
+        uploadQueued = true;
+        RenderSystem.recordRenderCall(() -> {
+            uploadQueued = false;
+            pushTexture();
+        });
+    }
+
+    /** Chỉ gọi trên render thread: tạo texture một lần, ghi pixel và upload. Lỗi thì tắt skin, không làm sập. */
     private static void pushTexture() {
-        MinecraftClient c = MinecraftClient.getInstance();
-        if (c == null || c.getTextureManager() == null) return;
-        if (tex == null) {
-            tex = new NativeImageBackedTexture(new NativeImage(NativeImage.Format.RGBA, SIZE, SIZE, false));
-            c.getTextureManager().registerTexture(TEXTURE, tex);
-        }
-        NativeImage img = tex.getImage();
-        if (img == null) return;
-        int[] out = exportPixels();
-        for (int y = 0; y < SIZE; y++) {
-            for (int x = 0; x < SIZE; x++) {
-                img.setColorArgb(x, y, out[y * SIZE + x]);
+        if (failed || !RenderSystem.isOnRenderThread()) return;
+        try {
+            MinecraftClient c = MinecraftClient.getInstance();
+            if (c == null || c.getTextureManager() == null) return;
+            if (tex == null) {
+                tex = new NativeImageBackedTexture(new NativeImage(NativeImage.Format.RGBA, SIZE, SIZE, false));
+                c.getTextureManager().registerTexture(TEXTURE, tex);
             }
+            NativeImage img = tex.getImage();
+            if (img == null) return;
+            int[] out = exportPixels();
+            for (int y = 0; y < SIZE; y++) {
+                for (int x = 0; x < SIZE; x++) {
+                    img.setColorArgb(x, y, out[y * SIZE + x]);
+                }
+            }
+            tex.upload();
+            dirty = false;
+            uploaded = true;
+        } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
+            failed = true;
+            dirty = false;
+            System.err.println("[Elara] Không đưa được skin lên GPU, tắt skin tùy chỉnh: " + t);
         }
-        tex.upload();
-        dirty = false;
     }
 }

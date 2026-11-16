@@ -3,10 +3,15 @@ package com.elara.client.mixin;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraAssets;
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.ui.LoadingBackground;
 import com.elara.client.ui.SceneScreen;
 import com.elara.client.ui.TitleScene;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.DownloadingTerrainScreen;
+import net.minecraft.client.gui.screen.LevelLoadingScreen;
+import net.minecraft.client.gui.screen.MessageScreen;
+import net.minecraft.client.gui.screen.ProgressScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.render.RenderLayer;
@@ -47,6 +52,14 @@ public abstract class ScreenMixin {
         MinecraftClient client = MinecraftClient.getInstance();
         int w = client.getWindow().getScaledWidth();
         int h = client.getWindow().getScaledHeight();
+
+        // Màn hình tải địa hình, tải thế giới, kết nối: một lần vẽ gradient, nhẹ nhất lúc đang tải map
+        Object self = this;
+        if (self instanceof DownloadingTerrainScreen || self instanceof LevelLoadingScreen
+                || self instanceof ProgressScreen || self instanceof MessageScreen) {
+            LoadingBackground.drawGradient(ctx, w, h);
+            return;
+        }
 
         boolean scene = ElaraConfig.titleMode() == 1
                 && (((Object) this) instanceof TitleScreen || ((Object) this) instanceof SceneScreen);
