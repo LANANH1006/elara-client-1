@@ -10,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Nền kiểu dirt/options của vanilla, dùng ở màn hình tải thế giới, kết nối server và
- * tải địa hình (ProgressScreen, LevelLoadingScreen, ConnectScreen, DownloadingTerrainScreen
- * đều kế thừa từ Screen). Thay bằng nền Elara để resource pack không đè được.
+ * Nền kiểu dirt/options của vanilla. Trên bản 1.21.4 phương thức này không tồn tại, nên mixin
+ * không khớp và bỏ qua (require = 0). Nền màn hình tải được xử lý ở ScreenMixin.
  * Priority lớn để chạy trước các mixin khác; mod khác vẫn có thể hủy hoặc ghi đè.
  */
 @Mixin(value = Screen.class, priority = Integer.MAX_VALUE)

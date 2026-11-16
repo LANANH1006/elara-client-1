@@ -9,7 +9,6 @@ import com.elara.client.ui.TitleScene;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.DownloadingTerrainScreen;
-import net.minecraft.client.gui.screen.LevelLoadingScreen;
 import net.minecraft.client.gui.screen.MessageScreen;
 import net.minecraft.client.gui.screen.ProgressScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -55,7 +54,7 @@ public abstract class ScreenMixin {
 
         // Màn hình tải địa hình, tải thế giới, kết nối: một lần vẽ gradient, nhẹ nhất lúc đang tải map
         Object self = this;
-        if (self instanceof DownloadingTerrainScreen || self instanceof LevelLoadingScreen
+        if (self instanceof DownloadingTerrainScreen
                 || self instanceof ProgressScreen || self instanceof MessageScreen) {
             LoadingBackground.drawGradient(ctx, w, h);
             return;
