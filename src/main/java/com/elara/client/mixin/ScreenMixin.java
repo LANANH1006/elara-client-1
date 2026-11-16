@@ -3,7 +3,6 @@ package com.elara.client.mixin;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraAssets;
 import com.elara.client.core.ElaraConfig;
-import com.elara.client.ui.LoadingBackground;
 import com.elara.client.ui.SceneScreen;
 import com.elara.client.ui.TitleScene;
 import net.minecraft.client.MinecraftClient;
@@ -21,11 +20,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Thay nền của mọi màn hình (menu, chat, options, multiplayer...) bằng title_bg.png hoặc cảnh 3D.
- * Ảnh được nạp từ trong jar nên resource pack không đè được.
+ * Nền ảnh tĩnh title_bg cho các màn hình phụ (tùy chọn, đa người chơi, ...).
  *
- * Priority lớn để mixin này chạy trước các mixin khác đang cùng chạm vào renderBackground
- * (ví dụ addon kiểu Glaze). Priority chỉ quyết định thứ tự, mod khác vẫn có thể hủy lệnh này.
+ * Không đụng tới sảnh chính (TitleScreen), túi đồ, và màn hình tải (tải map, kết nối, tiến trình).
+ * Những màn hình đó để Minecraft và mod nền của người dùng (ví dụ Glaze) tự vẽ.
  */
 @Mixin(value = Screen.class, priority = Integer.MAX_VALUE)
 public abstract class ScreenMixin {
@@ -34,42 +32,42 @@ public abstract class ScreenMixin {
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$iosBackground(DrawContext ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
-        // Túi đồ và rương: để nền gốc của game, không vẽ kính đè lên
-        if (((Object) this) instanceof HandledScreen<?>) return;
+        if (!elara$drawsOwnBackground()) return;
         elara$drawBackdrop(ctx);
         ci.cancel();
     }
 
-    /** Panorama là nền xoay của menu chính. Chặn luôn để không mod nào vẽ đè lên nền Elara. */
     @Inject(method = "renderPanoramaBackground(Lnet/minecraft/client/gui/DrawContext;F)V",
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$iosPanorama(DrawContext ctx, float delta, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
-        if (((Object) this) instanceof HandledScreen<?>) return;
+        if (!elara$drawsOwnBackground()) return;
         elara$drawBackdrop(ctx);
         ci.cancel();
     }
 
-    /** Vẽ nền Elara cho màn hình hiện tại: cảnh 3D nếu đang bật ở màn hình chính, ngược lại ảnh tĩnh */
+    /** Chỉ các màn hình phụ mới nhận nền Elara. Sảnh chính, túi đồ và màn hình tải giữ nguyên của game. */
+    private boolean elara$drawsOwnBackground() {
+        Object self = this;
+        return !(self instanceof TitleScreen)
+                && !(self instanceof HandledScreen<?>)
+                && !(self instanceof DownloadingTerrainScreen)
+                && !(self instanceof ProgressScreen)
+                && !(self instanceof MessageScreen);
+    }
+
+    /** Vẽ nền Elara: cảnh 3D chỉ ở màn chọn cảnh, còn lại là ảnh tĩnh kèm lớp tối */
     private void elara$drawBackdrop(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
         int w = client.getWindow().getScaledWidth();
         int h = client.getWindow().getScaledHeight();
 
-        // Màn hình tải địa hình, tải thế giới, kết nối: một lần vẽ gradient, nhẹ nhất lúc đang tải map
-        Object self = this;
-        if (self instanceof DownloadingTerrainScreen
-                || self instanceof ProgressScreen || self instanceof MessageScreen) {
-            LoadingBackground.drawGradient(ctx, w, h);
-            return;
-        }
-
-        boolean scene = ElaraConfig.titleMode() == 1
-                && (((Object) this) instanceof TitleScreen || ((Object) this) instanceof SceneScreen);
+        boolean scene = ElaraConfig.titleMode() == 1 && ((Object) this) instanceof SceneScreen;
         if (scene && TitleScene.draw(ctx, w, h)) return;
 
-        ElaraAssets.ensureLoaded();
-        ctx.drawTexture(RenderLayer::getGuiTextured, ElaraAssets.TITLE_BG, 0, 0, 0f, 0f, w, h, w, h);
+        if (ElaraAssets.ensureTitleBg()) {
+            ctx.drawTexture(RenderLayer::getGuiTextured, ElaraAssets.TITLE_BG, 0, 0, 0f, 0f, w, h, w, h);
+        }
         ctx.fill(0, 0, w, h, 0x88000000);
     }
 }

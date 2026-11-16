@@ -163,7 +163,8 @@ public final class WorldFx {
 
     /** Gọi mỗi tick (20 lần mỗi giây) từ ElaraClient. Không gọi trong hàm vẽ. */
     public static void tick(MinecraftClient client) {
-        if (brokenTick) return;
+        // Tắt hết tính năng thế giới thì không tính gì cả
+        if (brokenTick || !(active() || skyActive())) return;
         try {
             tickInner(client);
         } catch (Throwable t) {

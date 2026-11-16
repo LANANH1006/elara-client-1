@@ -349,6 +349,8 @@ public final class Lang {
             e("snd.bad_url", "Link không hợp lệ (chỉ http hoặc https)", "Invalid link (http or https only)"),
             e("snd.too_long", "Bài quá dài để giải mã trên điện thoại (tối đa khoảng 6 phút)", "Track too long to decode on a phone (about 6 minutes max)"),
             e("snd.fail", "Không phát được bài này", "Could not play this track"),
+            e("snd.err", "Lỗi: ", "Error: "),
+            e("snd.playing", "Đang phát", "Playing"),
             e("snd.no_audio", "Không mở được thiết bị âm thanh OpenAL", "Could not open the OpenAL audio device"),
             e("snd.empty_url", "Hãy nhập hoặc dán link trước", "Enter or paste a link first"),
             e("snd.no_lyric", "Không có lời", "No lyrics"),

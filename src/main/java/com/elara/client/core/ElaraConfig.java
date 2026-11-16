@@ -38,6 +38,7 @@ public final class ElaraConfig {
         public int islandX = -1;        // px, -1 nghĩa là căn giữa
         public String lang = "vi";
         public Map<String, Boolean> toggles = new LinkedHashMap<>();
+        public int toggleVersion = 0;        // 3 = đã đưa mọi tính năng về mặc định nhẹ (chỉ Chat Touch bật)
         public LagFix.Backup lagBackup; // giá trị gốc của game trước khi Fix Lag can thiệp
         public Map<String, Layout> layouts = new LinkedHashMap<>();
         public int themeAccent = 0xFF0A84FF; // màu chủ đạo của menu (ARGB)
@@ -297,6 +298,14 @@ public final class ElaraConfig {
             }
         }
         Lang.setCode(data.lang);
+        if (data.toggles == null) data.toggles = new LinkedHashMap<>();
+        if (data.toggleVersion < 3) {
+            // Bản này đặt lại mọi tính năng về mặc định nhẹ, một lần duy nhất: chỉ Chat Touch bật sẵn,
+            // còn hiệu ứng 3D, cánh, dao, thế giới, shader và culling đều tắt. Bật lại trong menu Elara nếu cần.
+            data.toggles.clear();
+            data.toggleVersion = 3;
+            dirty = true;
+        }
         if (data.hudVersion < 2) {
             // Bản cũ đặt HUD ở giữa trái và đè lên chat: chuyển sang vị trí mới
             if (data.layouts != null) {

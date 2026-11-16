@@ -14,6 +14,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -22,6 +23,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,6 +63,11 @@ public final class MusicPlayer {
     private static final int STAGE_BYTES = 65536;
     /** Giới hạn PCM đã giải mã: khoảng 6 phút stereo 44.1 kHz. Quá mức này điện thoại dễ hết RAM. */
     private static final int MAX_PCM_BYTES = 64 * 1024 * 1024;
+    /** Giới hạn file tải về (mp3 nén nên lớn hơn PCM ở trên một chút là đủ cho bài dài khoảng 10 phút) */
+    private static final long MAX_DOWNLOAD_BYTES = 96L * 1024 * 1024;
+    /** Java Sound đứng im quá lâu thì chuyển sang OpenAL */
+    private static final long STALL_MS = 4000;
+    private static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
     private static final int ANALYSIS_FRAMES = 512;
     private static final double[] BAND_HZ = {110, 220, 440, 880, 1760, 3520, 7040, 14080};
 
@@ -113,6 +120,12 @@ public final class MusicPlayer {
     private static volatile boolean decoding;
     /** Tăng mỗi lần chọn bài mới, để kết quả của bài cũ bị bỏ */
     private static volatile long decodeToken = 0;
+    /** Đường phát Java Sound đang dùng (null nếu đang dùng OpenAL) */
+    private static JavaSoundSink sink;
+    /** Đã thử Java Sound và hỏng trên máy này: từ đó chỉ dùng OpenAL */
+    private static boolean sinkBroken;
+    private static long lastPlayed = -1;
+    private static long lastAdvanceMs;
 
     private MusicPlayer() {}
 
@@ -213,20 +226,79 @@ public final class MusicPlayer {
         final long token = decodeToken;
         decoding = true;
         status = Lang.get("snd.loading");
-        // Tải và giải mã ở luồng nền; render thread chỉ nhận kết quả đã chuẩn hóa qua tick()
+        // Tải về cache và giải mã ở luồng nền; render thread chỉ nhận kết quả đã chuẩn hóa qua tick()
         CompletableFuture
-                .supplyAsync(() -> fetchAndDecodeUrl(uri, shown, token), DECODER)
+                .supplyAsync(() -> downloadAndDecode(uri, shown, token), DECODER)
                 .whenComplete((d, err) -> finish(token, d, err));
     }
 
-    /** Luồng nền: tải URL rồi giải mã. Lỗi được ném ra để whenComplete ghi nhận. */
-    private static Decoded fetchAndDecodeUrl(URI uri, String shown, long token) {
-        try (InputStream in = open(uri.toURL())) {
-            return decode(in, shown, new ArrayList<>(), token);
+    /** Luồng nền: tải link về file cache rồi giải mã file đó. Lỗi được ném ra để whenComplete ghi nhận. */
+    private static Decoded downloadAndDecode(URI uri, String shown, long token) {
+        try {
+            Path cached = downloadToCache(uri, token);
+            try (InputStream in = Files.newInputStream(cached)) {
+                return decode(in, shown, new ArrayList<>(), token);
+            }
         } catch (Throwable t) {
             Guard.rethrowIfFatal(t);
             throw new CompletionException(t);
         }
+    }
+
+    /** Tải link về cache/elara-music/current.audio trong thư mục game, qua file tạm rồi đổi tên */
+    private static Path downloadToCache(URI uri, long token) throws IOException {
+        Path dir = FabricLoader.getInstance().getGameDir().resolve("cache").resolve("elara-music");
+        Files.createDirectories(dir);
+        Path part = dir.resolve("current.audio.part");
+        Path target = dir.resolve("current.audio");
+        HttpURLConnection c = connect(uri.toURL());
+        try (InputStream in = new BufferedInputStream(c.getInputStream());
+             OutputStream out = Files.newOutputStream(part)) {
+            copyCapped(in, out, token);
+        } finally {
+            c.disconnect();
+        }
+        Files.move(part, target, StandardCopyOption.REPLACE_EXISTING);
+        return target;
+    }
+
+    /** Chép luồng; dừng nếu quá giới hạn, hoặc nếu người chơi đã đổi bài (token khác) */
+    private static void copyCapped(InputStream in, OutputStream out, long token) throws IOException {
+        byte[] buf = new byte[1 << 16];
+        long total = 0;
+        int n;
+        while ((n = in.read(buf)) != -1) {
+            if (token != decodeToken) throw new IOException("bài đã đổi, hủy tải");
+            total += n;
+            if (total > MAX_DOWNLOAD_BYTES) throw new TooLong();
+            out.write(buf, 0, n);
+        }
+    }
+
+    /** Mở HTTP hoặc HTTPS, tự theo redirect 301, 302, 303, 307, 308 kể cả khi đổi giao thức (tối đa 5 lần) */
+    private static HttpURLConnection connect(URL url) throws IOException {
+        URL cur = url;
+        for (int hop = 0; hop <= 5; hop++) {
+            HttpURLConnection c = (HttpURLConnection) cur.openConnection();
+            c.setConnectTimeout(10_000);
+            c.setReadTimeout(20_000);
+            c.setInstanceFollowRedirects(false);
+            c.setRequestProperty("User-Agent", USER_AGENT);
+            int code = c.getResponseCode();
+            if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+                String loc = c.getHeaderField("Location");
+                c.disconnect();
+                if (loc == null) throw new IOException("HTTP " + code + " nhưng không có Location");
+                cur = new URL(cur, loc);
+                continue;
+            }
+            if (code < 200 || code >= 300) {
+                c.disconnect();
+                throw new IOException("HTTP " + code);
+            }
+            return c;
+        }
+        throw new IOException("quá nhiều lần chuyển hướng");
     }
 
     /** Nhận kết quả giải mã hoặc lỗi từ luồng nền. Kết quả cũ (token khác) bị bỏ qua trong publish và fail. */
@@ -245,6 +317,8 @@ public final class MusicPlayer {
         decoding = false;
         ready = null;
         failure = null;
+        closeSink();
+        lastPlayed = -1;
         clearQueue();
         playing = false;
         loaded = false;
@@ -262,7 +336,8 @@ public final class MusicPlayer {
     private static String failureText(Throwable t) {
         if (t instanceof TooLong) return Lang.get("snd.too_long");
         System.err.println("[Elara] Không phát được nhạc: " + t);
-        return Lang.get("snd.fail");
+        String detail = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+        return Lang.get("snd.err") + detail;
     }
 
     /** Phát / tạm dừng. Chưa có bài nào thì phát bài đầu tiên của thư mục. */
@@ -276,14 +351,16 @@ public final class MusicPlayer {
     }
 
     public static void pause() {
-        if (alReady && loaded) AL10.alSourcePause(source);
+        if (loaded && sink != null) sink.setPaused(true);
+        else if (alReady && loaded) AL10.alSourcePause(source);
         playing = false;
     }
 
     private static void resume() {
         if (!loaded) return;
         if (playedFrames() >= totalFrames) seekFrames(0);
-        AL10.alSourcePlay(source);
+        if (sink != null) sink.setPaused(false);
+        else AL10.alSourcePlay(source);
         playing = true;
     }
 
@@ -302,6 +379,11 @@ public final class MusicPlayer {
     }
 
     private static void seekFrames(long target) {
+        if (sink != null) {
+            sink.seek(Math.max(0, Math.min(totalFrames, target)));
+            lastPlayed = -1;
+            return;
+        }
         clearQueue();
         sentFrames = Math.max(0, Math.min(totalFrames, target));
         pump();
@@ -331,6 +413,7 @@ public final class MusicPlayer {
 
     /** Frame đang nghe: frame đã xong trong các buffer, cộng vị trí trong buffer đang phát */
     private static long playedFrames() {
+        if (sink != null) return sink.playedFrames();
         if (!loaded || !alReady) return 0;
         // AL_SAMPLE_OFFSET thuộc OpenAL 1.1 (AL11). alGetSourcei vẫn nằm ở AL10.
         int off = AL10.alGetSourcei(source, AL11.AL_SAMPLE_OFFSET);
@@ -359,14 +442,19 @@ public final class MusicPlayer {
             decoding = false;
             status = err;
         }
-        if (!loaded || !alReady) {
+        if (!loaded || (sink == null && !alReady)) {
             decay();
             return;
         }
+        watchSink();
         pump();
-        if (playing && queuedLens.isEmpty() && sentFrames >= totalFrames) {
+        boolean done = sink != null
+                ? sink.finished()
+                : (playing && queuedLens.isEmpty() && sentFrames >= totalFrames);
+        if (playing && done) {
             // Hết bài: với thư mục thì sang bài kế, với link thì dừng
             playing = false;
+            if (sink != null) sink.setPaused(true);
             if (index >= 0) next();
         }
         updateBands();
@@ -420,10 +508,7 @@ public final class MusicPlayer {
 
     private static void start(Decoded d) {
         decoding = false;
-        if (!ensureAl()) {
-            status = Lang.get("snd.no_audio");
-            return;
-        }
+        closeSink();
         clearQueue();
         pcm = d.pcm();
         channels = d.channels();
@@ -434,12 +519,67 @@ public final class MusicPlayer {
         lyrics = d.lyrics();
         title = d.title();
         loaded = totalFrames > 0;
-        status = loaded ? "" : Lang.get("snd.fail");
-        if (!loaded) return;
+        if (!loaded) {
+            status = Lang.get("snd.fail");
+            return;
+        }
+        // Ưu tiên Java Sound (không cần OpenAL của Minecraft); không mở được thì dùng OpenAL
+        if (!sinkBroken) {
+            JavaSoundSink s = JavaSoundSink.open(pcm, totalFrames, 0);
+            if (s != null) {
+                sink = s;
+                lastPlayed = -1;
+                lastAdvanceMs = System.currentTimeMillis();
+                playing = true;
+                status = Lang.get("snd.playing");
+                return;
+            }
+            sinkBroken = true;
+        }
+        startAl(0);
+    }
+
+    /** Phát bằng OpenAL từ frame from. Không mở được thiết bị thì báo lỗi và không đánh dấu đang phát. */
+    private static void startAl(long from) {
+        if (!ensureAl()) {
+            loaded = false;
+            playing = false;
+            status = Lang.get("snd.no_audio");
+            return;
+        }
+        clearQueue();
+        sentFrames = Math.max(0, Math.min(totalFrames, from));
         AL10.alSourcef(source, AL10.AL_GAIN, ElaraConfig.musicVolume() / 100f);
         pump();
         AL10.alSourcePlay(source);
         playing = true;
+        status = Lang.get("snd.playing");
+    }
+
+    private static void closeSink() {
+        JavaSoundSink s = sink;
+        sink = null;
+        if (s != null) s.close();
+    }
+
+    /**
+     * Java Sound đang nói là đang phát nhưng vị trí không tiến nữa (thiết bị giả hoặc im lặng):
+     * đóng nó và phát tiếp bằng OpenAL từ đúng chỗ đang nghe.
+     */
+    private static void watchSink() {
+        if (sink == null) return;
+        long now = System.currentTimeMillis();
+        long p = sink.playedFrames();
+        if (!playing || p != lastPlayed) {
+            lastPlayed = p;
+            lastAdvanceMs = now;
+            return;
+        }
+        if (p >= totalFrames || now - lastAdvanceMs < STALL_MS) return;
+        System.err.println("[Elara] Java Sound không tiến, chuyển sang OpenAL");
+        closeSink();
+        sinkBroken = true;
+        startAl(p);
     }
 
     /** Dừng nguồn và trả mọi buffer về danh sách rảnh */
@@ -458,7 +598,7 @@ public final class MusicPlayer {
 
     /** Nạp thêm đoạn PCM vào các buffer rảnh, và phát tiếp nếu nguồn đã dừng vì cạn hàng đợi */
     private static void pump() {
-        if (!alReady || !loaded) return;
+        if (sink != null || !alReady || !loaded) return;
         int done = AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED);
         for (int i = 0; i < done; i++) {
             freeBuffers.add(AL10.alSourceUnqueueBuffers(source));
@@ -589,17 +729,6 @@ public final class MusicPlayer {
             out.write(buf, 0, n);
         }
         return out.toByteArray();
-    }
-
-    private static InputStream open(URL u) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) u.openConnection();
-        c.setConnectTimeout(10_000);
-        c.setReadTimeout(20_000);
-        c.setInstanceFollowRedirects(true);
-        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
-        int code = c.getResponseCode();
-        if (code >= 400) throw new IOException("HTTP " + code);
-        return c.getInputStream();
     }
 
     private static String fileNameOf(URI uri) {

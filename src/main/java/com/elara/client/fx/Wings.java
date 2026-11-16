@@ -2,6 +2,7 @@ package com.elara.client.fx;
 
 import com.elara.client.core.ElaraAssets;
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
@@ -54,8 +55,11 @@ public final class Wings {
     /** Vẽ cánh cho mọi người chơi đang theo dõi. Tự flush cả hai batch. */
     public static void draw(Matrix4f mat, MinecraftClient client, ElaraConfig.Layout l, int argb, float a,
                             WorldBatch.V cam) {
-        ElaraAssets.ensureLoaded();
+        if (!ElaraConfig.isOn(Feature.VIRTUAL_WINGS)) return;
         int style = clamp(l.get("style", 0), 0, STYLES - 1);
+        // Ảnh chỉ nạp khi cánh đang được vẽ; ảnh lỗi thì không vẽ cánh, game vẫn chạy
+        boolean texOk = style == STYLE_GALAXY ? ElaraAssets.ensureWingGalaxy() : ElaraAssets.ensureWingFeather();
+        if (!texOk) return;
         double size = Math.max(0.5, l.scalePct / 100.0);
         int speed = clamp(l.get("speed", 5), 1, 10);
         double t = System.currentTimeMillis() / 1000.0;

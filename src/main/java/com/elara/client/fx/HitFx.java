@@ -1,6 +1,7 @@
 package com.elara.client.fx;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
 import net.minecraft.entity.Entity;
 
 import java.util.ArrayList;
@@ -32,11 +33,16 @@ public final class HitFx {
 
     /** Gọi mỗi tick: bỏ các lần nổ đã hết thời gian */
     public static void tick() {
+        if (!ElaraConfig.isOn(Feature.HIT_EFFECT)) {
+            BURSTS.clear();
+            return;
+        }
         long now = System.currentTimeMillis();
         BURSTS.removeIf(b -> now - b.startMs() > DURATION_MS);
     }
 
     public static void draw(WorldBatch b, WorldBatch.V cam, ElaraConfig.Layout l, int argb) {
+        if (!ElaraConfig.isOn(Feature.HIT_EFFECT)) return;
         int style = l.get("style", RAYS);
         long now = System.currentTimeMillis();
         for (Burst bu : BURSTS) {

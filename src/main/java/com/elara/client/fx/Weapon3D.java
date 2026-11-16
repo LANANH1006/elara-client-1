@@ -274,6 +274,7 @@ public final class Weapon3D {
 
     /** Gọi trong lượt vẽ hiệu ứng thế giới, sau khi các thực thể đã vẽ xong */
     public static void drawThirdPersonIfMarked(Vec3d cam) {
+        if (!ElaraConfig.isOn(Feature.WEAPON_3D)) return;
         long stamp = thirdPersonStamp;
         if (stamp == 0L) return;
         thirdPersonStamp = 0L;

@@ -45,7 +45,7 @@ public final class Airplane {
 
     /** Vẽ máy bay quanh người chơi local. Lỗi thì tắt tính năng này, không làm sập game. */
     public static void draw(Matrix4f m, MinecraftClient client, WorldBatch.V cam, float alpha) {
-        if (broken) return;
+        if (broken || !ElaraConfig.isOn(Feature.AIRPLANE_MORPH)) return;
         AbstractClientPlayerEntity p = client.player;
         if (p == null || client.options == null || client.options.getPerspective().isFirstPerson()) return;
         if (!isFlying(p)) {

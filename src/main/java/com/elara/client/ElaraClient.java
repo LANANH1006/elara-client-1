@@ -26,11 +26,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.gui.screen.ChatScreen;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
-import com.elara.client.i18n.Lang;
 import com.elara.client.hud.AfkOverlay;
 import com.elara.client.ui.ElaraMenuScreen;
-import com.elara.client.ui.IosSplashScreen;
-import com.elara.client.ui.SceneScreen;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
@@ -54,7 +51,6 @@ public class ElaraClient implements ClientModInitializer {
 
     private static KeyBinding menuKey;
     private static KeyBinding inspectKey;
-    private static boolean splashDone = false;
     private static boolean lagSynced = false;
     private static boolean lastFocused = true;
 
@@ -114,14 +110,6 @@ public class ElaraClient implements ClientModInitializer {
                 LagFix.sync(client);
             }
 
-            // Splash kiểu iOS: chạy mỗi lần mở game, rồi quay lại màn hình gốc
-            if (!splashDone && client.currentScreen instanceof TitleScreen) {
-                splashDone = true;
-                Screen next = client.currentScreen;
-                client.setScreen(new IosSplashScreen(next));
-                return;
-            }
-
             while (menuKey.wasPressed()) {
                 if (!AuthorGuard.isValid()) continue;
                 // Mở được cả ở màn hình chính, không cần vào server
@@ -144,14 +132,15 @@ public class ElaraClient implements ClientModInitializer {
         // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng
         WorldRenderEvents.AFTER_TRANSLUCENT.register(Effects::render);
 
-        // Nút Scene ở góc dưới phải màn hình chính: mở bảng chọn nền ảnh tĩnh hoặc cảnh 3D
+        // Màn hình chính chỉ có đúng một nút nhỏ [Elara] ở góc dưới phải, mở Menu Elara.
+        // Không vẽ nền, logo hay hiệu ứng nào khác lên sảnh chính: để Minecraft và mod nền (Glaze) tự vẽ.
         ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
             if (!(screen instanceof TitleScreen)) return;
-            ButtonWidget scene = ButtonWidget.builder(Text.literal(Lang.get("title.scene")),
-                            b -> client.setScreen(new SceneScreen(screen)))
-                    .dimensions(sw - 80, sh - 26, 70, 20)
+            ButtonWidget elara = ButtonWidget.builder(Text.literal("Elara"),
+                            b -> client.setScreen(new ElaraMenuScreen(screen)))
+                    .dimensions(sw - 58, sh - 24, 50, 18)
                     .build();
-            Screens.getButtons(screen).add(scene);
+            Screens.getButtons(screen).add(elara);
         });
 
         // Bàn phím ảo và thanh nút nhanh trên màn hình chat (tính năng Chat Touch)

@@ -55,7 +55,6 @@ final class TargetHud {
         LivingEntity t = target;
         if (t == null || now - lastSeen > HOLD_MS || !t.isAlive()) return;
         try {
-            ElaraAssets.ensureLoaded();
             drawPanel(ctx, client, t);
         } catch (RuntimeException ex) {
             broken = true;
@@ -141,7 +140,9 @@ final class TargetHud {
             ctx.getMatrices().translate(TEXT_X, 40, 0);
             float s = 12f / 64f;
             ctx.getMatrices().scale(s, s, 1f);
-            ctx.drawTexture(RenderLayer::getGuiTextured, ElaraAssets.SHIELD_CRACK, 0, 0, 0f, 0f, 64, 64, 64, 64);
+            if (ElaraAssets.ensureShieldCrack()) {
+                ctx.drawTexture(RenderLayer::getGuiTextured, ElaraAssets.SHIELD_CRACK, 0, 0, 0f, 0f, 64, 64, 64, 64);
+            }
             ctx.getMatrices().pop();
             String txt = String.format(Locale.ROOT, "%.1fs", left / 1000.0);
             ctx.drawText(tr, Text.literal(txt), TEXT_X + 15, 42, 0xFFFFB347, false);

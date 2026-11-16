@@ -43,7 +43,7 @@ public final class SoftShadow {
 
     /** Gọi mỗi tick. Tính vị trí và độ cao của các bóng. Không vẽ gì ở đây. */
     public static void tick(MinecraftClient client) {
-        if (broken) return;
+        if (broken || !enabled()) return;
         try {
             tickInner(client);
         } catch (Throwable t) {
@@ -108,7 +108,7 @@ public final class SoftShadow {
 
     /** Vẽ các đĩa bóng. Chỉ đọc mảng đã tính ở tick. */
     public static void draw(Matrix4f m, WorldBatch.V cam) {
-        if (broken || count == 0) return;
+        if (broken || count == 0 || !enabled()) return;
         WorldBatch b = new WorldBatch(m, cam.x(), cam.y(), cam.z(), false);
         double strength = ElaraConfig.layout(Feature.SOFT_SHADOW).get("strength", 45) / 100.0;
         for (int i = 0; i < count; i++) {

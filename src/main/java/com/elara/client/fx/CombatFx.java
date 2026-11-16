@@ -83,6 +83,11 @@ public final class CombatFx {
 
     /** Gọi mỗi tick trên client */
     public static void tick(MinecraftClient client) {
+        // Tắt hết hiệu ứng PvP thì xóa các hạt đang còn và thôi tính
+        if (!active()) {
+            clear();
+            return;
+        }
         long now = System.currentTimeMillis();
         PlayerEntity me = client.player;
         if (client.world == null || me == null) {
