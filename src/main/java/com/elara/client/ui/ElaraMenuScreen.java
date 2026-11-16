@@ -4,7 +4,6 @@ import com.elara.client.ElaraClient;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
-import com.elara.client.core.LagFix;
 import com.elara.client.core.MemoryTools;
 import com.elara.client.core.PackManager;
 import com.elara.client.i18n.Lang;
@@ -498,15 +497,10 @@ public class ElaraMenuScreen extends Screen {
         }
     }
 
+    /** Chỉ đổi cờ của Elara và ghi cấu hình Elara. Không tải lại thế giới hay tài nguyên. */
     private void toggle(Feature f) {
         ElaraConfig.toggle(f);
         ElaraConfig.save();
-        MinecraftClient client = MinecraftClient.getInstance();
-        LagFix.sync(client);
-        // Màu nước của Lite Shader nằm trong mesh chunk: dựng lại để thấy ngay
-        if (f == Feature.LITE_SHADER && client.worldRenderer != null && client.world != null) {
-            client.worldRenderer.reload();
-        }
     }
 
     private void openSettings(Feature f) {

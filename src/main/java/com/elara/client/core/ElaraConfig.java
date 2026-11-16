@@ -39,7 +39,6 @@ public final class ElaraConfig {
         public String lang = "vi";
         public Map<String, Boolean> toggles = new LinkedHashMap<>();
         public int toggleVersion = 0;        // 3 = đã đưa mọi tính năng về mặc định nhẹ (chỉ Chat Touch bật)
-        public LagFix.Backup lagBackup; // giá trị gốc của game trước khi Fix Lag can thiệp
         public Map<String, Layout> layouts = new LinkedHashMap<>();
         public int themeAccent = 0xFF0A84FF; // màu chủ đạo của menu (ARGB)
         public int hudVersion = 0;           // 2 = đã áp dụng vị trí HUD mặc định mới
@@ -231,9 +230,6 @@ public final class ElaraConfig {
         }
         return l;
     }
-
-    public static LagFix.Backup backup() { return data.lagBackup; }
-    public static void setBackup(LagFix.Backup b) { data.lagBackup = b; dirty = true; }
 
     // ---------- trạng thái menu, skin, nhạc ----------
 

@@ -2,6 +2,7 @@ package com.elara.client.mixin;
 
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraAssets;
+import com.elara.client.core.Diag;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.ui.SceneScreen;
 import com.elara.client.ui.TitleScene;
@@ -28,10 +29,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = Screen.class, priority = Integer.MAX_VALUE)
 public abstract class ScreenMixin {
 
+    /** Đã ghi nhật ký lần đầu khi sảnh chính được vẽ, để không in lặp lại mỗi khung hình */
+    private static boolean titleLogged;
+
     @Inject(method = "renderBackground(Lnet/minecraft/client/gui/DrawContext;IIF)V",
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$iosBackground(DrawContext ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        if (!titleLogged && ((Object) this) instanceof TitleScreen) {
+            titleLogged = true;
+            Diag.log("sảnh chính: mod không vẽ nền, để Minecraft và mod nền vẽ");
+        }
         if (!elara$drawsOwnBackground()) return;
         elara$drawBackdrop(ctx);
         ci.cancel();

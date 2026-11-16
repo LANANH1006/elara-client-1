@@ -8,14 +8,8 @@ import java.util.Locale;
 
 /** Mọi tính năng bật/tắt được trong menu. Mặc định đều tắt. */
 public enum Feature {
-    LAG_RENDER(Group.FIX_LAG),
     LAG_ENTITIES(Group.FIX_LAG),
     LAG_PARTICLES(Group.FIX_LAG),
-    LAG_GPU_SAVER(Group.FIX_LAG),
-    LAG_CLOUDS(Group.FIX_LAG),
-    LAG_BIOME(Group.FIX_LAG),
-    LAG_MIPMAP(Group.FIX_LAG),
-    LAG_FOCUS_FPS(Group.FIX_LAG),
     NO_FOG(Group.FIX_LAG),
     NO_BLOCK_ANIM(Group.FIX_LAG),
     AFK_SAVER(Group.FIX_LAG),

@@ -76,6 +76,7 @@ public final class ElaraAssets {
                 System.err.println("[Elara] Không thấy " + path + " trong jar");
                 return false;
             }
+            Diag.log("nạp ảnh " + path);
             NativeImage image = NativeImage.read(in);
             MinecraftClient.getInstance().getTextureManager()
                     .registerTexture(id, new NativeImageBackedTexture(image));

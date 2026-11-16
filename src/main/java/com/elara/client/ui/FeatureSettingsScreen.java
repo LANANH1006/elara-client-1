@@ -2,7 +2,6 @@ package com.elara.client.ui;
 
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
-import com.elara.client.core.LagFix;
 import com.elara.client.fx.WorldFx;
 import com.elara.client.i18n.Lang;
 import net.minecraft.client.MinecraftClient;
@@ -129,18 +128,10 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(slider(Lang.get("set.thickness"), "", 1, 6, "thickness", 2));
                 list.add(slider(Lang.get("set.gap"), "", 0, 10, "gap", 3));
             }
-            case LAG_RENDER -> list.add(slider(Lang.get("set.view_cap"), "", 2, 16, "viewCap", 12));
-            case LAG_GPU_SAVER -> {
-                list.add(slider(Lang.get("set.view_cap"), "", 2, 16, "viewCap", 8));
-                list.add(slider(Lang.get("set.fps_cap"), "", 15, 120, "fpsCap", 60));
-            }
             case LAG_ENTITIES -> {
                 list.add(slider(Lang.get("set.entity_pct"), "%", 50, 100, "pct", 50));
                 list.add(slider(Lang.get("set.entity_dist"), "", 8, 48, "dist", 48));
             }
-            case LAG_BIOME -> list.add(slider(Lang.get("set.biome_radius"), "", 0, 7, "radius", 0));
-            case LAG_MIPMAP -> list.add(slider(Lang.get("set.mipmap"), "", 0, 4, "levels", 0));
-            case LAG_FOCUS_FPS -> list.add(slider(Lang.get("set.focus_fps"), "", 10, 60, "fps", 10));
             case JUMP_RING -> {
                 String[] styles = {Lang.get("ring.wave"), Lang.get("ring.double"), Lang.get("ring.magic")};
                 list.add(new Ctl(Lang.get("set.ring_style"), "", 0, styles.length - 1,
@@ -516,8 +507,6 @@ public class FeatureSettingsScreen extends Screen {
     @Override
     public void close() {
         ElaraConfig.save();
-        MinecraftClient client = MinecraftClient.getInstance();
-        LagFix.sync(client);
-        client.setScreen(parent);
+        MinecraftClient.getInstance().setScreen(parent);
     }
 }

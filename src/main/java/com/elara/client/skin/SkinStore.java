@@ -12,10 +12,6 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -115,7 +111,7 @@ public final class SkinStore {
             message = String.format(Lang.get("skin.fetched"), pendingName);
             saveAsync();
         }
-        if (dirty && uploaded) requestUpload();
+        if (dirty && uploaded && ElaraConfig.skinOn()) requestUpload();
     }
 
     /** Đảm bảo texture cập nhật trước khi màn hình vẽ canvas */
@@ -248,10 +244,8 @@ public final class SkinStore {
     }
 
     private static void writePng(int[] px) throws IOException {
-        BufferedImage img = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
-        img.setRGB(0, 0, SIZE, SIZE, px, 0, SIZE);
         Files.createDirectories(FILE.getParent());
-        ImageIO.write(img, "png", FILE.toFile());
+        Files.write(FILE, PngCodec.encode(px, SIZE, SIZE));
     }
 
     /** Lần đầu dùng: đọc file đã lưu, hoặc đặt màu da mặc định. Chỉ làm một lần. */
@@ -260,10 +254,10 @@ public final class SkinStore {
         fileChecked = true;
         Arrays.fill(EDIT, DEFAULT_SKIN);
         for (int[] r : rectsOf("outer")) clear(EDIT, r);
-        File f = FILE.toFile();
-        if (!f.isFile()) return;
+        if (!Files.isRegularFile(FILE)) return;
         try {
-            int[] px = toSquare(ImageIO.read(f));
+            if (Files.size(FILE) > MAX_PNG) return;
+            int[] px = toSquare(PngCodec.decode(Files.readAllBytes(FILE)));
             if (px != null) {
                 System.arraycopy(px, 0, EDIT, 0, EDIT.length);
                 saved = true;
@@ -299,7 +293,7 @@ public final class SkinStore {
                         && skin.getAsJsonObject("metadata").has("model")
                         && "slim".equals(skin.getAsJsonObject("metadata").get("model").getAsString());
                 byte[] png = getBytes(skin.get("url").getAsString(), MAX_PNG);
-                int[] px = toSquare(ImageIO.read(new ByteArrayInputStream(png)));
+                int[] px = toSquare(PngCodec.decode(png));
                 if (px == null) {
                     message = Lang.get("skin.fetch_fail");
                     return;
@@ -338,11 +332,11 @@ public final class SkinStore {
     }
 
     /** Đưa ảnh về 64x64 ARGB. Skin cũ 64x32 thì phần dưới để trong suốt. */
-    static int[] toSquare(BufferedImage img) {
+    static int[] toSquare(PngCodec.Image img) {
         if (img == null) return null;
-        int w = img.getWidth();
-        int h = img.getHeight();
-        int[] src = img.getRGB(0, 0, w, h, null, 0, w);
+        int w = img.width();
+        int h = img.height();
+        int[] src = img.argb();
         if (w == SIZE && h == SIZE) return src;
         int[] out = new int[SIZE * SIZE];
         if (w == SIZE && h == SIZE / 2) {

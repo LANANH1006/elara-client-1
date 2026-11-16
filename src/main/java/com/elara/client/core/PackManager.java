@@ -68,6 +68,8 @@ public final class PackManager {
 
     /** Tải lại tài nguyên để các thay đổi có hiệu lực */
     public static void reload(MinecraftClient client) {
+        // Chỉ chạy khi người chơi bấm nút tải lại trong tab Gói tài nguyên, không bao giờ tự động
+        Diag.log("reloadResources: người chơi yêu cầu tải lại tài nguyên");
         client.reloadResources();
     }
 }

@@ -282,7 +282,7 @@ public final class ChatKeyboard {
             case MENU -> c.setScreen(new ElaraMenuScreen(screen));
             case VIEW -> c.options.setPerspective(c.options.getPerspective().next());
             case SPIN -> KnifeAnim.inspect(c);
-            case LAG -> LagFix.toggleMax(c);
+            case LAG -> LagFix.toggleMax();
             case KEYS -> open = !open;
         }
     }

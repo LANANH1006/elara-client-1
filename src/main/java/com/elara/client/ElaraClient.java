@@ -4,7 +4,7 @@ import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
-import com.elara.client.core.LagFix;
+import com.elara.client.core.Diag;
 import com.elara.client.core.Warmup;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import com.elara.client.hud.LyricsHud;
@@ -51,13 +51,14 @@ public class ElaraClient implements ClientModInitializer {
 
     private static KeyBinding menuKey;
     private static KeyBinding inspectKey;
-    private static boolean lagSynced = false;
-    private static boolean lastFocused = true;
 
     @Override
     public void onInitializeClient() {
+        Diag.log("onInitializeClient: bắt đầu");
         ElaraConfig.load();
+        Diag.log("onInitializeClient: đã nạp cấu hình");
         AuthorGuard.isValid(); // kiểm tra ngay khi khởi động để log sớm
+        Diag.log("onInitializeClient: đã kiểm tra bản quyền");
 
         // Mặc định mở menu bằng phím Right Shift
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -74,6 +75,8 @@ public class ElaraClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_G,
                 "key.category.elaraclient.main"
         ));
+
+        Diag.log("onInitializeClient: đã đăng ký phím");
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             Warmup.tick();
@@ -96,19 +99,6 @@ public class ElaraClient implements ClientModInitializer {
             HitFx.tick();
             if (Warmup.heavy()) CombatFx.tick(client);
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
-
-            // Đổi focus cửa sổ thì áp lại Fix Lag (giới hạn FPS khi không focus)
-            boolean focused = client.isWindowFocused();
-            if (focused != lastFocused) {
-                lastFocused = focused;
-                LagFix.sync(client);
-            }
-
-            // Áp dụng Fix Lag một lần khi game khởi động
-            if (!lagSynced) {
-                lagSynced = true;
-                LagFix.sync(client);
-            }
 
             while (menuKey.wasPressed()) {
                 if (!AuthorGuard.isValid()) continue;
@@ -165,5 +155,6 @@ public class ElaraClient implements ClientModInitializer {
             ElaraConfig.flushNow();
             SkinStore.flushNow();
         });
+        Diag.log("onInitializeClient: xong");
     }
 }

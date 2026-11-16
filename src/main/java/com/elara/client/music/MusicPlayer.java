@@ -7,11 +7,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import org.lwjgl.openal.AL10;
 import org.lwjgl.openal.AL11;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,10 +37,10 @@ import java.util.stream.Stream;
 /**
  * Trình phát nhạc từ file trong elara/music hoặc từ link http(s) trực tiếp (mp3, wav, ogg).
  *
- * Phát bằng OpenAL, đường âm thanh mà Minecraft đã dùng. Không dùng Clip hay SourceDataLine của
- * javax.sound.sampled: trên PojavLauncher và FCL, máy Android không có mixer Java Sound, nên hai cách đó
- * không mở được và nhạc im lặng. Giải mã chạy ở luồng nền, còn việc đẩy dữ liệu lên OpenAL chạy ở tick,
- * nên khung hình không bị khựng. Mỗi lần chỉ đưa BUFFERS đoạn ngắn CHUNK_S giây vào hàng đợi.
+ * Đường phát: Java Sound (SourceDataLine) thử trước; máy không mở được thì dùng OpenAL của Minecraft.
+ * javax.sound chỉ được nạp khi bắt đầu phát một bài (xem AudioDecoder và JavaSoundSink), không nằm trong
+ * đường khởi động. Giải mã chạy ở luồng nền; việc đẩy dữ liệu lên OpenAL chạy ở tick, nên khung hình không
+ * bị khựng. Mỗi lần chỉ đưa BUFFERS đoạn ngắn CHUNK_S giây vào hàng đợi.
  *
  * YouTube không được hỗ trợ: đó là tải về một dịch vụ có điều khoản cấm, nên mod từ chối các link đó.
  * Lời bài hát đọc từ file .lrc cùng tên. Dữ liệu tần số (8 dải) cho vòng Halo tính bằng Goertzel.
@@ -74,7 +70,7 @@ public final class MusicPlayer {
     /** Kết quả giải mã, chờ luồng chính lấy ra để phát */
     private record Decoded(byte[] pcm, int channels, int rate, String title, List<Line> lyrics, long token) {}
 
-    private static final class TooLong extends IOException {
+    static final class TooLong extends IOException {
         TooLong() { super("too long"); }
     }
 
@@ -525,7 +521,7 @@ public final class MusicPlayer {
         }
         // Ưu tiên Java Sound (không cần OpenAL của Minecraft); không mở được thì dùng OpenAL
         if (!sinkBroken) {
-            JavaSoundSink s = JavaSoundSink.open(pcm, totalFrames, 0);
+            JavaSoundSink s = openSink();
             if (s != null) {
                 sink = s;
                 lastPlayed = -1;
@@ -537,6 +533,20 @@ public final class MusicPlayer {
             sinkBroken = true;
         }
         startAl(0);
+    }
+
+    /**
+     * Mở Java Sound. Lớp JavaSoundSink chỉ được nạp lúc này, nên nếu máy thiếu java.desktop thì lỗi nạp
+     * chỉ làm rơi về OpenAL, không làm sập game.
+     */
+    private static JavaSoundSink openSink() {
+        try {
+            return JavaSoundSink.open(pcm, totalFrames, 0);
+        } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
+            System.err.println("[Elara] Không dùng được Java Sound, chuyển sang OpenAL: " + t);
+            return null;
+        }
     }
 
     /** Phát bằng OpenAL từ frame from. Không mở được thiết bị thì báo lỗi và không đánh dấu đang phát. */
@@ -667,68 +677,8 @@ public final class MusicPlayer {
      * rồi chuẩn hóa sang stereo 44100 Hz. Hàm này chạy trên luồng nền, chưa đụng tới OpenAL.
      */
     private static Decoded decode(InputStream raw, String name, List<Line> ls, long token) throws IOException {
-        try (AudioInputStream src = AudioSystem.getAudioInputStream(new BufferedInputStream(raw))) {
-            AudioFormat base = src.getFormat();
-            int ch = base.getChannels() >= 2 ? 2 : 1;
-            float fr = base.getSampleRate();
-            if (fr <= 0) throw new IOException("không rõ tần số lấy mẫu");
-            // Giữ tần số gốc ở bước này (JDK không đổi tần số được), tần số đích xử lý ở toStereo44k
-            AudioFormat target = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, fr, 16, ch, ch * 2, fr, false);
-            try (AudioInputStream pcmStream = AudioSystem.getAudioInputStream(target, src)) {
-                byte[] data = readCapped(pcmStream);
-                return new Decoded(toStereo44k(data, ch, fr), 2, OUT_RATE, name, ls, token);
-            } catch (IllegalArgumentException e) {
-                throw new IOException("không đổi được định dạng", e);
-            }
-        } catch (javax.sound.sampled.UnsupportedAudioFileException e) {
-            throw new IOException("định dạng không hỗ trợ", e);
-        }
-    }
-
-    /**
-     * Đưa PCM 16-bit little-endian mono hoặc stereo về stereo 44100 Hz.
-     * Mono được nhân đôi sang hai kênh; đổi tần số bằng nội suy tuyến tính giữa hai mẫu gần nhất.
-     */
-    private static byte[] toStereo44k(byte[] src, int ch, float srcRate) throws IOException {
-        int srcFrames = src.length / (ch * 2);
-        if (srcFrames <= 0) return new byte[0];
-        double step = srcRate / OUT_RATE;
-        long outFrames = (long) ((srcFrames - 1) / step) + 1;
-        if (outFrames * 4 > MAX_PCM_BYTES) throw new TooLong();
-        byte[] out = new byte[(int) outFrames * 4];
-        for (int i = 0; i < outFrames; i++) {
-            double pos = i * step;
-            int i0 = (int) pos;
-            int i1 = Math.min(i0 + 1, srcFrames - 1);
-            float t = (float) (pos - i0);
-            for (int c = 0; c < 2; c++) {
-                int sc = ch == 1 ? 0 : c;
-                int a = pcmSample(src, i0, sc, ch);
-                int b = pcmSample(src, i1, sc, ch);
-                int v = a + Math.round((b - a) * t);
-                int o = i * 4 + c * 2;
-                out[o] = (byte) v;
-                out[o + 1] = (byte) (v >> 8);
-            }
-        }
-        return out;
-    }
-
-    /** Một mẫu 16-bit little-endian tại khung frame, kênh c */
-    private static int pcmSample(byte[] src, int frame, int c, int ch) {
-        int o = (frame * ch + c) * 2;
-        return (short) ((src[o] & 0xFF) | (src[o + 1] << 8));
-    }
-
-    private static byte[] readCapped(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(1 << 20);
-        byte[] buf = new byte[1 << 16];
-        int n;
-        while ((n = in.read(buf)) > 0) {
-            if (out.size() + n > MAX_PCM_BYTES) throw new TooLong();
-            out.write(buf, 0, n);
-        }
-        return out.toByteArray();
+        byte[] data = AudioDecoder.decodeStereo(raw, OUT_RATE, MAX_PCM_BYTES);
+        return new Decoded(data, 2, OUT_RATE, name, ls, token);
     }
 
     private static String fileNameOf(URI uri) {

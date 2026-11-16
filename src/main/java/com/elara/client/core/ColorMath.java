@@ -1,6 +1,6 @@
 package com.elara.client.core;
 
-/** Đổi màu HSB và RGB. Viết tay, không dùng java.awt. */
+/** Đổi màu HSB và RGB bằng toán thuần, không phụ thuộc thư viện đồ họa. */
 public final class ColorMath {
 
     private ColorMath() {}
