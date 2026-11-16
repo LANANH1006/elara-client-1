@@ -5,6 +5,7 @@ import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.Diag;
+import com.elara.client.core.Guard;
 import com.elara.client.core.Warmup;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import com.elara.client.hud.LyricsHud;
@@ -50,6 +51,13 @@ public class ElaraClient implements ClientModInitializer {
     public static final String MOD_ID = "elaraclient";
     public static final String AUTHOR = "Lan Anh";
 
+    /**
+     * Chế độ cô lập lỗi treo ở thanh tải Mojang. Khi true, chỉ đăng ký nút [Elara] ở sảnh chính.
+     * Mọi callback gameplay (tick, HUD, thế giới, tấn công, vào map, tắt game) không được đăng ký.
+     * Đặt false để bật lại đầy đủ.
+     */
+    static final boolean ISOLATE_TITLE_ONLY = true;
+
     private static KeyBinding menuKey;
     private static KeyBinding inspectKey;
     private static boolean titleLogged;
@@ -80,94 +88,145 @@ public class ElaraClient implements ClientModInitializer {
 
         Diag.log("onInitializeClient: đã đăng ký phím");
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            // Chưa vào thế giới (màn hình tải Mojang, sảnh chính): chỉ chạy phần nhẹ. Không tick hiệu ứng,
-            // không chạm render, không chạm âm thanh (OpenAL / javax.sound).
-            if (client.world == null) {
-                ElaraConfig.tick();
-                while (inspectKey.wasPressed()) { /* phím G chỉ có tác dụng trong thế giới */ }
-                MusicPlayer.tick(false);
-                handleMenuKey(client);
-                return;
-            }
+        // Màn hình chính chỉ có đúng một nút nhỏ [Elara] ở góc dưới phải, mở Menu Elara.
+        registerTitleButton();
 
-            Warmup.tick();
-            CullingManager.tick();
-            KeyTracker.tick(client);
-            PlayerTracker.tick(client);
-            PlayerMotion.tick(client);
-            BuildGuide.tick(client);
-            KnifeAnim.tick(client);
-            // Tính toán thế giới và bóng: có try/catch riêng. Vài tick đầu sau khi vào map thì tạm dừng.
-            if (Warmup.heavy()) {
-                WorldFx.tick(client);
-                SoftShadow.tick(client);
+        if (ISOLATE_TITLE_ONLY) {
+            Diag.log("onInitializeClient: CHẾ ĐỘ CÔ LẬP, chỉ nút [Elara] ở sảnh chính");
+            Diag.log("onInitializeClient: xong");
+            return;
+        }
+
+        registerGameplayCallbacks();
+        Diag.log("onInitializeClient: xong");
+    }
+
+    /** Nút [Elara] ở sảnh chính. Không vẽ nền, logo hay hiệu ứng nào khác: để Minecraft và Glaze tự vẽ. */
+    private static void registerTitleButton() {
+        ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
+            try {
+                if (!(screen instanceof TitleScreen)) return;
+                if (!titleLogged) {
+                    titleLogged = true;
+                    Diag.log("sảnh chính: thêm nút Elara");
+                }
+                ButtonWidget elara = ButtonWidget.builder(Text.literal("Elara"),
+                                b -> client.setScreen(new ElaraMenuScreen(screen)))
+                        .dimensions(sw - 58, sh - 24, 50, 18)
+                        .build();
+                Screens.getButtons(screen).add(elara);
+            } catch (Throwable t) {
+                report("nút Elara ở sảnh chính", t);
             }
-            // Cấu hình: chỉ kiểm tra một cờ, ghi sau khoảng 300 ms kể từ thay đổi cuối (xem ElaraConfig)
-            ElaraConfig.tick();
-            // Nhận skin tải về và đẩy texture khi có đổi (việc upload chạy trên luồng này, tức render thread)
-            SkinStore.tickMain();
-            while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
-            HitFx.tick();
-            if (Warmup.heavy()) CombatFx.tick(client);
-            MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
-            handleMenuKey(client);
+        });
+    }
+
+    /** Các callback gameplay. Chỉ chạy khi ISOLATE_TITLE_ONLY là false. */
+    private static void registerGameplayCallbacks() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            try {
+                onClientTick(client);
+            } catch (Throwable t) {
+                report("tick", t);
+            }
         });
 
-        // Dynamic Island luôn vẽ trên đầu màn hình
+        // Dynamic Island luôn vẽ trên đầu màn hình, chỉ khi đã vào thế giới
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
-            // HUD của Elara chỉ vẽ trong thế giới: sảnh chính và màn hình tải không chạm render của mod
-            if (MinecraftClient.getInstance().world == null) return;
-            DynamicIslandHud.render(context);
-            ElementsHud.render(context);
-            CrosshairHud.render(context);
-            LyricsHud.render(context);
-            AfkOverlay.render(context); // phủ cuối cùng, nằm trên mọi HUD
+            try {
+                if (MinecraftClient.getInstance().world == null) return;
+                DynamicIslandHud.render(context);
+                ElementsHud.render(context);
+                CrosshairHud.render(context);
+                LyricsHud.render(context);
+                AfkOverlay.render(context); // phủ cuối cùng, nằm trên mọi HUD
+            } catch (Throwable t) {
+                report("HUD", t);
+            }
         });
 
         // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng
         WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> {
-            if (MinecraftClient.getInstance().world != null) Effects.render(ctx);
-        });
-
-        // Màn hình chính chỉ có đúng một nút nhỏ [Elara] ở góc dưới phải, mở Menu Elara.
-        // Không vẽ nền, logo hay hiệu ứng nào khác lên sảnh chính: để Minecraft và mod nền (Glaze) tự vẽ.
-        ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
-            if (!(screen instanceof TitleScreen)) return;
-            if (!titleLogged) {
-                titleLogged = true;
-                Diag.log("sảnh chính: thêm nút Elara");
+            try {
+                if (MinecraftClient.getInstance().world != null) Effects.render(ctx);
+            } catch (Throwable t) {
+                report("hiệu ứng thế giới", t);
             }
-            ButtonWidget elara = ButtonWidget.builder(Text.literal("Elara"),
-                            b -> client.setScreen(new ElaraMenuScreen(screen)))
-                    .dimensions(sw - 58, sh - 24, 50, 18)
-                    .build();
-            Screens.getButtons(screen).add(elara);
         });
 
         // Bàn phím ảo và thanh nút nhanh trên màn hình chat (tính năng Chat Touch)
         ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
-            if (screen instanceof ChatScreen) ChatKeyboard.attach(screen);
+            try {
+                if (screen instanceof ChatScreen) ChatKeyboard.attach(screen);
+            } catch (Throwable t) {
+                report("bàn phím chat", t);
+            }
         });
 
         // Đánh trúng thực thể: tạo hiệu ứng tại vị trí mục tiêu (không chặn hành động)
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-            if (ElaraConfig.isOn(Feature.HIT_EFFECT)) {
-                HitFx.spawn(entity);
+            try {
+                if (ElaraConfig.isOn(Feature.HIT_EFFECT)) HitFx.spawn(entity);
+                if (Warmup.ready()) CombatFx.onAttack(player, entity);
+            } catch (Throwable t) {
+                report("đánh trúng", t);
             }
-            if (Warmup.ready()) CombatFx.onAttack(player, entity);
             return ActionResult.PASS;
         });
 
         // Vừa vào server hoặc map: đặt thời gian chờ ngắn, hiệu ứng nặng sẽ bật lại sau đó
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> Warmup.onJoin());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
+            try {
+                Warmup.onJoin();
+            } catch (Throwable t) {
+                report("vào máy chủ", t);
+            }
+        });
 
         // Khi game tắt: ghi đồng bộ cấu hình và nét vẽ skin, để không mất thay đổi cuối cùng
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> {
-            ElaraConfig.flushNow();
-            SkinStore.flushNow();
+            try {
+                ElaraConfig.flushNow();
+                SkinStore.flushNow();
+            } catch (Throwable t) {
+                report("tắt game", t);
+            }
         });
-        Diag.log("onInitializeClient: xong");
+    }
+
+    /** Mỗi tick. Chưa vào thế giới thì chỉ chạy phần nhẹ. */
+    private static void onClientTick(MinecraftClient client) {
+        // Chưa vào thế giới (màn hình tải Mojang, sảnh chính): chỉ chạy phần nhẹ. Không tick hiệu ứng,
+        // không chạm render, không chạm âm thanh (OpenAL / javax.sound).
+        if (client.world == null) {
+            ElaraConfig.tick();
+            while (inspectKey.wasPressed()) { /* phím G chỉ có tác dụng trong thế giới */ }
+            MusicPlayer.tick(false);
+            handleMenuKey(client);
+            return;
+        }
+
+        Warmup.tick();
+        CullingManager.tick();
+        KeyTracker.tick(client);
+        PlayerTracker.tick(client);
+        PlayerMotion.tick(client);
+        BuildGuide.tick(client);
+        KnifeAnim.tick(client);
+        // Tính toán thế giới và bóng: vài tick đầu sau khi vào map thì tạm dừng
+        if (Warmup.heavy()) {
+            WorldFx.tick(client);
+            SoftShadow.tick(client);
+        }
+        // Cấu hình: chỉ kiểm tra một cờ, ghi sau khoảng 300 ms kể từ thay đổi cuối (xem ElaraConfig)
+        ElaraConfig.tick();
+        // Nhận skin tải về và đẩy texture khi có đổi (việc upload chạy trên luồng này, tức render thread)
+        SkinStore.tickMain();
+        while (inspectKey.wasPressed()) KnifeAnim.inspect(client);
+        HitFx.tick();
+        if (Warmup.heavy()) CombatFx.tick(client);
+        MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
+        handleMenuKey(client);
     }
 
     /** Phím Right Shift mở Menu Elara. Mở được cả ở sảnh chính, không cần vào server. */
@@ -179,5 +238,16 @@ public class ElaraClient implements ClientModInitializer {
                 client.setScreen(new ElaraMenuScreen(cur));
             }
         }
+    }
+
+    /**
+     * Ghi lỗi của một callback ra log để chẩn đoán. In ra System.out để nằm cùng luồng với dòng [Elara].
+     * OOM được văng tiếp, không bị nuốt.
+     */
+    static void report(String where, Throwable t) {
+        Guard.rethrowIfFatal(t);
+        System.out.println("[Elara] lỗi trong " + where + ": " + t);
+        t.printStackTrace(System.out);
+        System.out.flush();
     }
 }

@@ -6,21 +6,5 @@
   "injectors": {
     "defaultRequire": 0
   },
-  "client": [
-    "ParticleAccessor",
-    "ParticleManagerMixin",
-    "EntityRenderDispatcherMixin",
-    "InGameHudMixin",
-    "HeldItemRendererMixin",
-    "HeldItemFeatureRendererMixin",
-    "InGameOverlayRendererMixin",
-    "BackgroundRendererMixin",
-    "SpriteAnimatorMixin",
-    "BlockEntityRenderMixin",
-    "EntityRendererBadgeMixin",
-    "PlayerListHudMixin",
-    "ClientWorldSkyMixin",
-    "AbstractClientPlayerEntityMixin",
-    "BiomeColorsMixin"
-  ]
+  "client": []
 }
