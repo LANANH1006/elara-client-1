@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
@@ -22,6 +24,7 @@ public abstract class BlockEntityRenderMixin {
     private void elara$cullBlockEntity(BlockEntity blockEntity, float tickDelta, MatrixStack matrices,
                                        VertexConsumerProvider vertexConsumers, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        if (Gate.loading()) return;
         if (!ElaraConfig.isOn(Feature.LAG_BLOCK_ENTITIES)) return;
         // Vật ở tay (rương, biển cầm trên tay) không gắn với thế giới nên không có vị trí thật: luôn vẽ
         if (blockEntity.getWorld() == null) return;

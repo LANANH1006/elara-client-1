@@ -5,6 +5,7 @@ import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.Diag;
+import com.elara.client.core.Gate;
 import com.elara.client.core.Guard;
 import com.elara.client.core.Warmup;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -56,7 +57,7 @@ public class ElaraClient implements ClientModInitializer {
      * Mọi callback gameplay (tick, HUD, thế giới, tấn công, vào map, tắt game) không được đăng ký.
      * Đặt false để bật lại đầy đủ.
      */
-    static final boolean ISOLATE_TITLE_ONLY = true;
+    static final boolean ISOLATE_TITLE_ONLY = false;
 
     private static KeyBinding menuKey;
     private static KeyBinding inspectKey;
@@ -134,7 +135,7 @@ public class ElaraClient implements ClientModInitializer {
         // Dynamic Island luôn vẽ trên đầu màn hình, chỉ khi đã vào thế giới
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
             try {
-                if (MinecraftClient.getInstance().world == null) return;
+                if (Gate.loading() || MinecraftClient.getInstance().world == null) return;
                 DynamicIslandHud.render(context);
                 ElementsHud.render(context);
                 CrosshairHud.render(context);
@@ -148,7 +149,7 @@ public class ElaraClient implements ClientModInitializer {
         // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng
         WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> {
             try {
-                if (MinecraftClient.getInstance().world != null) Effects.render(ctx);
+                if (!Gate.loading() && MinecraftClient.getInstance().world != null) Effects.render(ctx);
             } catch (Throwable t) {
                 report("hiệu ứng thế giới", t);
             }
@@ -196,12 +197,13 @@ public class ElaraClient implements ClientModInitializer {
 
     /** Mỗi tick. Chưa vào thế giới thì chỉ chạy phần nhẹ. */
     private static void onClientTick(MinecraftClient client) {
-        // Chưa vào thế giới (màn hình tải Mojang, sảnh chính): chỉ chạy phần nhẹ. Không tick hiệu ứng,
-        // không chạm render, không chạm âm thanh (OpenAL / javax.sound).
+        // Đang vẽ màn hình tải Mojang: không làm gì, để thanh tải chạy hết
+        if (Gate.loading()) return;
+        // Chưa vào thế giới (sảnh chính): chỉ chạy phần nhẹ, không tick hiệu ứng thế giới
         if (client.world == null) {
             ElaraConfig.tick();
             while (inspectKey.wasPressed()) { /* phím G chỉ có tác dụng trong thế giới */ }
-            MusicPlayer.tick(false);
+            MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
             handleMenuKey(client);
             return;
         }

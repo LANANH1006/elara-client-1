@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Guard;
 import com.elara.client.skin.SkinStore;
@@ -22,9 +24,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(AbstractClientPlayerEntity.class)
 public abstract class AbstractClientPlayerEntityMixin {
 
+    /** Đã in lỗi skin một lần, tránh spam log vì hàm này chạy mỗi khung hình */
+    private static boolean loggedSkinError;
+
     @Inject(method = "getSkinTextures", at = @At("RETURN"), cancellable = true, require = 0)
     private void elara$customSkin(CallbackInfoReturnable<SkinTextures> cir) {
         try {
+            if (Gate.loading()) return;
             if (!ElaraConfig.hasCustomSkin()) return;
             MinecraftClient client = MinecraftClient.getInstance();
             if (client == null || client.player == null) return;
@@ -39,7 +45,13 @@ public abstract class AbstractClientPlayerEntityMixin {
                     orig.elytraTexture(), model, orig.secure()));
         } catch (Throwable t) {
             Guard.rethrowIfFatal(t);
-            // Lỗi thì giữ skin gốc của game, không làm sập
+            // Lỗi thì giữ skin gốc của game, không làm sập. Chỉ ghi log lần đầu để không spam mỗi khung hình.
+            if (!loggedSkinError) {
+                loggedSkinError = true;
+                System.out.println("[Elara] lỗi skin tùy chỉnh, dùng skin gốc: " + t);
+                t.printStackTrace(System.out);
+                System.out.flush();
+            }
         }
     }
 }

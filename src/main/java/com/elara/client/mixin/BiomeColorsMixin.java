@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
@@ -30,6 +32,7 @@ public abstract class BiomeColorsMixin {
     private static void elara$turquoiseWater(BlockRenderView world, BlockPos pos,
                                              CallbackInfoReturnable<Integer> cir) {
         if (!AuthorGuard.isValid()) return;
+        if (Gate.loading()) return;
         if (!ElaraConfig.isOn(Feature.LITE_SHADER)) return;
 
         int base = cir.getReturnValue();

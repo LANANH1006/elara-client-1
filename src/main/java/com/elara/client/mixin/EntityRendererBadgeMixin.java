@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.badge.NameBadge;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
@@ -17,6 +19,7 @@ public abstract class EntityRendererBadgeMixin {
     @ModifyVariable(method = "renderLabelIfPresent", at = @At("HEAD"), argsOnly = true, require = 0)
     private Text elara$badgeLabel(Text text) {
         if (text == null || !AuthorGuard.isValid()) return text;
+        if (Gate.loading()) return text;
         if (!ElaraConfig.isOn(Feature.BADGE)) return text;
         return NameBadge.isPlayerName(text.getString()) ? NameBadge.prefix(text) : text;
     }

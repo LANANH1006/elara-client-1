@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
@@ -19,6 +21,7 @@ public abstract class InGameHudMixin {
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$hideVanillaCrosshair(DrawContext ctx, RenderTickCounter tick, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        if (Gate.loading()) return;
         if (ElaraConfig.isOn(Feature.PIXEL_CROSSHAIR)) ci.cancel();
     }
 }

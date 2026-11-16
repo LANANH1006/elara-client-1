@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.badge.NameBadge;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
@@ -19,6 +21,7 @@ public abstract class PlayerListHudMixin {
     @Inject(method = "getPlayerName", at = @At("RETURN"), cancellable = true, require = 0)
     private void elara$badgeTab(PlayerListEntry entry, CallbackInfoReturnable<Text> cir) {
         if (!AuthorGuard.isValid()) return;
+        if (Gate.loading()) return;
         if (!ElaraConfig.isOn(Feature.BADGE)) return;
         Text name = cir.getReturnValue();
         if (name != null) cir.setReturnValue(NameBadge.prefix(name));

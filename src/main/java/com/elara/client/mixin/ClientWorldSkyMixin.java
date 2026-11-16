@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.fx.WorldFx;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.Vec3d;
@@ -17,6 +19,7 @@ public abstract class ClientWorldSkyMixin {
 
     @Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true, require = 0)
     private void elara$skyColor(Vec3d cameraPos, float tickDelta, CallbackInfoReturnable<Vec3d> cir) {
+        if (Gate.loading()) return;
         if (!WorldFx.skyActive()) return;
         Vec3d base = cir.getReturnValue();
         if (base == null) return;

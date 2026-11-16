@@ -1,6 +1,7 @@
 package com.elara.client.music;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
 import com.elara.client.core.Guard;
 import com.elara.client.i18n.Lang;
 import net.fabricmc.loader.api.FabricLoader;
@@ -123,27 +124,54 @@ public final class MusicPlayer {
     private static long lastPlayed = -1;
     private static long lastAdvanceMs;
 
+    /** Bài thử tích hợp sẵn trong jar, chép vào thư mục nhạc lần đầu để bấm Phát là có tiếng */
+    private static final String BUNDLED_NAME = "elara_test.wav";
+    private static final String BUNDLED_RES = "/assets/elaraclient/sounds/elara_test.wav";
+    /** File đánh dấu đã chép bài thử, để không chép lại khi người dùng đã xóa */
+    private static final String SEED_MARK = ".seeded";
+
     private MusicPlayer() {}
 
     // ---------- thư mục và danh sách ----------
 
+    /** Thư mục nhạc: config/elara/music. Tạo sẵn nếu chưa có. */
     public static Path dir() {
-        Path d = FabricLoader.getInstance().getGameDir().resolve("elara").resolve("music");
+        Path d = FabricLoader.getInstance().getConfigDir().resolve("elara").resolve("music");
         try {
             Files.createDirectories(d);
-        } catch (IOException ignored) {
-            // Không tạo được thư mục thì danh sách sẽ trống
+        } catch (IOException e) {
+            System.err.println("[Elara] Không tạo được thư mục nhạc " + d + ": " + e);
         }
         return d;
     }
 
-    /** Quét lại thư mục nhạc: wav, mp3, ogg */
+    /** Quét lại thư mục nhạc: wav, mp3, ogg. Lần đầu tự chép bài thử tích hợp sẵn vào thư mục. */
     public static void rescan() {
+        Path d = dir();
+        seedBundled(d);
         TRACKS.clear();
-        try (Stream<Path> s = Files.list(dir())) {
+        try (Stream<Path> s = Files.list(d)) {
             s.filter(MusicPlayer::isAudio).sorted().forEach(TRACKS::add);
         } catch (IOException e) {
             status = Lang.get("snd.fail");
+            System.err.println("[Elara] Không đọc được thư mục nhạc " + d + ": " + e);
+        }
+    }
+
+    /** Chép bài thử từ jar vào thư mục nhạc đúng một lần (có file đánh dấu). Không chép đè file của người dùng. */
+    private static void seedBundled(Path d) {
+        Path target = d.resolve(BUNDLED_NAME);
+        Path mark = d.resolve(SEED_MARK);
+        if (Files.exists(mark) || Files.exists(target)) return;
+        try (InputStream in = MusicPlayer.class.getResourceAsStream(BUNDLED_RES)) {
+            if (in == null) {
+                System.err.println("[Elara] Thiếu bài thử trong jar: " + BUNDLED_RES);
+                return;
+            }
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            Files.writeString(mark, "seeded\n");
+        } catch (IOException e) {
+            System.err.println("[Elara] Không chép được bài thử vào " + target + ": " + e);
         }
     }
 
@@ -164,6 +192,7 @@ public final class MusicPlayer {
     /** Giải mã bài trong thư mục ở luồng nền. Bài đang phát được dừng ngay. */
     public static void play(int i) {
         if (i < 0 || i >= TRACKS.size()) return;
+        ensureEnabled();
         Path p = TRACKS.get(i);
         beginNewTrack();
         index = i;
@@ -192,6 +221,7 @@ public final class MusicPlayer {
     public static void playUrl(String raw) {
         String url = raw == null ? "" : raw.trim();
         ElaraConfig.setMusicUrl(url);
+        ensureEnabled();
         if (url.isEmpty()) {
             status = Lang.get("snd.empty_url");
             return;
@@ -342,14 +372,34 @@ public final class MusicPlayer {
             if (!TRACKS.isEmpty() && !decoding) play(Math.max(0, index));
             return;
         }
-        if (playing) pause();
-        else resume();
+        if (playing) {
+            pause();
+        } else {
+            ensureEnabled();
+            resume();
+        }
     }
 
     public static void pause() {
         if (loaded && sink != null) sink.setPaused(true);
         else if (alReady && loaded) AL10.alSourcePause(source);
         playing = false;
+    }
+
+    /** Dừng hẳn: đóng luồng Java Sound, dừng nguồn OpenAL, đưa về đầu bài. Sau đó không còn tốn CPU. */
+    public static void stop() {
+        playing = false;
+        closeSink();
+        if (alReady) clearQueue();
+        sentFrames = 0;
+        lastPlayed = -1;
+        loaded = false;
+        status = Lang.get("snd.stopped");
+    }
+
+    /** Bấm phát nghĩa là muốn nghe: bật tính năng nếu đang tắt, nếu không tick sẽ tạm dừng ngay. */
+    private static void ensureEnabled() {
+        if (!ElaraConfig.isOn(Feature.MUSIC_PLAYER)) ElaraConfig.toggle(Feature.MUSIC_PLAYER);
     }
 
     private static void resume() {
@@ -490,7 +540,9 @@ public final class MusicPlayer {
         if (alReady) return true;
         try {
             source = AL10.alGenSources();
+            checkAl("alGenSources");
             for (int i = 0; i < BUFFERS; i++) freeBuffers.add(AL10.alGenBuffers());
+            checkAl("alGenBuffers");
             stage = ByteBuffer.allocateDirect(STAGE_BYTES).order(ByteOrder.nativeOrder());
             alReady = true;
             return true;
@@ -500,6 +552,12 @@ public final class MusicPlayer {
             System.err.println("[Elara] Không mở được OpenAL cho nhạc: " + t);
             return false;
         }
+    }
+
+    /** Kiểm tra lỗi OpenAL sau lệnh tạo tài nguyên. Lỗi thì ném ra để ensureAl ghi log và đánh dấu hỏng. */
+    private static void checkAl(String what) {
+        int err = AL10.alGetError();
+        if (err != AL10.AL_NO_ERROR) throw new IllegalStateException(what + " lỗi OpenAL " + err);
     }
 
     private static void start(Decoded d) {

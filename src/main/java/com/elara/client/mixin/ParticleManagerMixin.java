@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
 import com.elara.client.core.ElaraConfig;
@@ -20,6 +22,7 @@ public abstract class ParticleManagerMixin {
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$cullParticle(Particle particle, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        if (Gate.loading()) return;
         // Tắt tính năng hoặc chưa vào thế giới: không làm gì, không ép kiểu
         if (!ElaraConfig.isOn(Feature.LAG_PARTICLES)) return;
         if (MinecraftClient.getInstance().world == null) return;

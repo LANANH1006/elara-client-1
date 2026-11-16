@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.Gate;
+
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
 import com.elara.client.fx.Airplane;
@@ -25,6 +27,7 @@ public abstract class EntityRenderDispatcherMixin {
                                   CallbackInfoReturnable<Boolean> cir) {
         if (!AuthorGuard.isValid()) return;
 
+        if (Gate.loading()) return;
         // Chưa vào thế giới thì không có thực thể để lọc: thoát sớm
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.world == null) {

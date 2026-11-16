@@ -83,7 +83,13 @@ final class JavaSoundSink {
                         wrote = true;
                     }
                 }
-                if (!wrote) Thread.sleep(8);
+                if (!wrote) {
+                    synchronized (lock) {
+                        // Đang tạm dừng hoặc đã ghi hết: chờ có thay đổi, không quay CPU
+                        if (!closed && (paused || nextFrame >= totalFrames)) lock.wait(500);
+                    }
+                    Thread.sleep(8);
+                }
             } catch (InterruptedException e) {
                 return;
             } catch (Throwable t) {
@@ -129,6 +135,7 @@ final class JavaSoundSink {
             paused = p;
             if (p) line.stop();
             else line.start();
+            lock.notifyAll();
         }
     }
 
