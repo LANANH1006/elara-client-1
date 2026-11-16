@@ -134,7 +134,10 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(slider(Lang.get("set.view_cap"), "", 2, 16, "viewCap", 8));
                 list.add(slider(Lang.get("set.fps_cap"), "", 15, 120, "fpsCap", 60));
             }
-            case LAG_ENTITIES -> list.add(slider(Lang.get("set.entity_pct"), "%", 50, 100, "pct", 50));
+            case LAG_ENTITIES -> {
+                list.add(slider(Lang.get("set.entity_pct"), "%", 50, 100, "pct", 50));
+                list.add(slider(Lang.get("set.entity_dist"), "", 8, 48, "dist", 48));
+            }
             case LAG_BIOME -> list.add(slider(Lang.get("set.biome_radius"), "", 0, 7, "radius", 0));
             case LAG_MIPMAP -> list.add(slider(Lang.get("set.mipmap"), "", 0, 4, "levels", 0));
             case LAG_FOCUS_FPS -> list.add(slider(Lang.get("set.focus_fps"), "", 10, 60, "fps", 10));
@@ -181,7 +184,7 @@ public class FeatureSettingsScreen extends Screen {
                 list.add(new Ctl(Lang.get("set.hit_style"), "", 0, styles.length - 1,
                         l -> l.get("style", 0), (l, v) -> l.put("style", v), styles));
             }
-            case LAG_BLOCK_ENTITIES -> list.add(slider(Lang.get("set.block_dist"), "", 8, 64, "dist", 24));
+            case LAG_BLOCK_ENTITIES -> list.add(slider(Lang.get("set.block_dist"), "", 8, 48, "dist", 24));
             case CAPE -> {
                 String[] capes = {Lang.get("cape.sakura"), Lang.get("cape.glass"), Lang.get("cape.neon")};
                 list.add(new Ctl(Lang.get("set.style"), "", 0, capes.length - 1,

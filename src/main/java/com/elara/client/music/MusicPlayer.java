@@ -28,6 +28,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -53,6 +55,8 @@ public final class MusicPlayer {
     private static final Pattern LRC = Pattern.compile("\\[(\\d+):(\\d{1,2})(?:[.:](\\d{1,3}))?\\](.*)");
 
     private static final int BUFFERS = 4;
+    /** Mọi bản nhạc được đưa về trước khi nạp vào OpenAL: PCM 44100 Hz, 16-bit, stereo */
+    private static final int OUT_RATE = 44100;
     private static final double CHUNK_S = 0.25;
     private static final int STAGE_BYTES = 65536;
     /** Giới hạn PCM đã giải mã: khoảng 6 phút stereo 44.1 kHz. Quá mức này điện thoại dễ hết RAM. */
@@ -159,15 +163,20 @@ public final class MusicPlayer {
         final long token = decodeToken;
         decoding = true;
         status = Lang.get("snd.loading");
-        DECODER.execute(() -> {
-            try (InputStream in = Files.newInputStream(p)) {
-                List<Line> ls = loadLyrics(p);
-                publish(token, decode(in, shown, ls, token));
-            } catch (Throwable t) {
-                Guard.rethrowIfFatal(t);
-                fail(token, failureText(t));
-            }
-        });
+        CompletableFuture
+                .supplyAsync(() -> readAndDecodeFile(p, shown, token), DECODER)
+                .whenComplete((d, err) -> finish(token, d, err));
+    }
+
+    /** Luồng nền: đọc file và giải mã. Lỗi được ném ra để whenComplete ghi nhận. */
+    private static Decoded readAndDecodeFile(Path p, String shown, long token) {
+        try (InputStream in = Files.newInputStream(p)) {
+            List<Line> ls = loadLyrics(p);
+            return decode(in, shown, ls, token);
+        } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
+            throw new CompletionException(t);
+        }
     }
 
     /** Phát link http hoặc https trực tiếp đến file mp3, wav, ogg. YouTube bị từ chối. */
@@ -204,14 +213,30 @@ public final class MusicPlayer {
         final long token = decodeToken;
         decoding = true;
         status = Lang.get("snd.loading");
-        DECODER.execute(() -> {
-            try (InputStream in = open(uri.toURL())) {
-                publish(token, decode(in, shown, new ArrayList<>(), token));
-            } catch (Throwable t) {
-                Guard.rethrowIfFatal(t);
-                fail(token, failureText(t));
-            }
-        });
+        // Tải và giải mã ở luồng nền; render thread chỉ nhận kết quả đã chuẩn hóa qua tick()
+        CompletableFuture
+                .supplyAsync(() -> fetchAndDecodeUrl(uri, shown, token), DECODER)
+                .whenComplete((d, err) -> finish(token, d, err));
+    }
+
+    /** Luồng nền: tải URL rồi giải mã. Lỗi được ném ra để whenComplete ghi nhận. */
+    private static Decoded fetchAndDecodeUrl(URI uri, String shown, long token) {
+        try (InputStream in = open(uri.toURL())) {
+            return decode(in, shown, new ArrayList<>(), token);
+        } catch (Throwable t) {
+            Guard.rethrowIfFatal(t);
+            throw new CompletionException(t);
+        }
+    }
+
+    /** Nhận kết quả giải mã hoặc lỗi từ luồng nền. Kết quả cũ (token khác) bị bỏ qua trong publish và fail. */
+    private static void finish(long token, Decoded d, Throwable err) {
+        if (err == null && d != null) {
+            publish(token, d);
+            return;
+        }
+        Throwable cause = (err instanceof CompletionException && err.getCause() != null) ? err.getCause() : err;
+        fail(token, failureText(cause == null ? new IOException("không rõ lỗi") : cause));
     }
 
     /** Dừng bài cũ và đổi token, để kết quả đang giải mã của bài cũ bị bỏ */
@@ -497,22 +522,62 @@ public final class MusicPlayer {
 
     // ---------- nội bộ: giải mã và đọc ----------
 
-    /** Giải mã mọi định dạng mà mp3spi và vorbisspi đọc được, đổi về PCM 16-bit little-endian */
+    /**
+     * Giải mã mọi định dạng mà mp3spi và vorbisspi đọc được, đổi về PCM 16-bit little-endian,
+     * rồi chuẩn hóa sang stereo 44100 Hz. Hàm này chạy trên luồng nền, chưa đụng tới OpenAL.
+     */
     private static Decoded decode(InputStream raw, String name, List<Line> ls, long token) throws IOException {
         try (AudioInputStream src = AudioSystem.getAudioInputStream(new BufferedInputStream(raw))) {
             AudioFormat base = src.getFormat();
             int ch = base.getChannels() >= 2 ? 2 : 1;
             float fr = base.getSampleRate();
+            if (fr <= 0) throw new IOException("không rõ tần số lấy mẫu");
+            // Giữ tần số gốc ở bước này (JDK không đổi tần số được), tần số đích xử lý ở toStereo44k
             AudioFormat target = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, fr, 16, ch, ch * 2, fr, false);
             try (AudioInputStream pcmStream = AudioSystem.getAudioInputStream(target, src)) {
                 byte[] data = readCapped(pcmStream);
-                return new Decoded(data, ch, Math.round(fr), name, ls, token);
+                return new Decoded(toStereo44k(data, ch, fr), 2, OUT_RATE, name, ls, token);
             } catch (IllegalArgumentException e) {
                 throw new IOException("không đổi được định dạng", e);
             }
         } catch (javax.sound.sampled.UnsupportedAudioFileException e) {
             throw new IOException("định dạng không hỗ trợ", e);
         }
+    }
+
+    /**
+     * Đưa PCM 16-bit little-endian mono hoặc stereo về stereo 44100 Hz.
+     * Mono được nhân đôi sang hai kênh; đổi tần số bằng nội suy tuyến tính giữa hai mẫu gần nhất.
+     */
+    private static byte[] toStereo44k(byte[] src, int ch, float srcRate) throws IOException {
+        int srcFrames = src.length / (ch * 2);
+        if (srcFrames <= 0) return new byte[0];
+        double step = srcRate / OUT_RATE;
+        long outFrames = (long) ((srcFrames - 1) / step) + 1;
+        if (outFrames * 4 > MAX_PCM_BYTES) throw new TooLong();
+        byte[] out = new byte[(int) outFrames * 4];
+        for (int i = 0; i < outFrames; i++) {
+            double pos = i * step;
+            int i0 = (int) pos;
+            int i1 = Math.min(i0 + 1, srcFrames - 1);
+            float t = (float) (pos - i0);
+            for (int c = 0; c < 2; c++) {
+                int sc = ch == 1 ? 0 : c;
+                int a = pcmSample(src, i0, sc, ch);
+                int b = pcmSample(src, i1, sc, ch);
+                int v = a + Math.round((b - a) * t);
+                int o = i * 4 + c * 2;
+                out[o] = (byte) v;
+                out[o + 1] = (byte) (v >> 8);
+            }
+        }
+        return out;
+    }
+
+    /** Một mẫu 16-bit little-endian tại khung frame, kênh c */
+    private static int pcmSample(byte[] src, int frame, int c, int ch) {
+        int o = (frame * ch + c) * 2;
+        return (short) ((src[o] & 0xFF) | (src[o + 1] << 8));
     }
 
     private static byte[] readCapped(InputStream in) throws IOException {

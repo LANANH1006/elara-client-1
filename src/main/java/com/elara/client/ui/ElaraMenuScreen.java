@@ -501,7 +501,12 @@ public class ElaraMenuScreen extends Screen {
     private void toggle(Feature f) {
         ElaraConfig.toggle(f);
         ElaraConfig.save();
-        LagFix.sync(MinecraftClient.getInstance());
+        MinecraftClient client = MinecraftClient.getInstance();
+        LagFix.sync(client);
+        // Màu nước của Lite Shader nằm trong mesh chunk: dựng lại để thấy ngay
+        if (f == Feature.LITE_SHADER && client.worldRenderer != null && client.world != null) {
+            client.worldRenderer.reload();
+        }
     }
 
     private void openSettings(Feature f) {

@@ -21,6 +21,9 @@ public abstract class ParticleManagerMixin {
         ParticleAccessor p = (ParticleAccessor) particle;
         if (!CullingManager.keepParticle(p.elaraX(), p.elaraY(), p.elaraZ())) {
             ci.cancel();
+            return;
         }
+        // FPS thấp: bớt khoảng 70% khói, nước bắn, vụn block
+        if (CullingManager.shedParticle(particle)) ci.cancel();
     }
 }

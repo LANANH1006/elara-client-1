@@ -25,6 +25,9 @@ public final class Airplane {
     private static final int RING_SEGS = 6;
 
     private static boolean broken;
+    /** Yaw của khung hình trước và góc nghiêng cánh hiện tại (độ), để nghiêng khi lượn */
+    private static float lastYaw = Float.NaN;
+    private static float bank;
 
     private Airplane() {}
 
@@ -45,17 +48,34 @@ public final class Airplane {
         if (broken) return;
         AbstractClientPlayerEntity p = client.player;
         if (p == null || client.options == null || client.options.getPerspective().isFirstPerson()) return;
-        if (!isFlying(p)) return;
+        if (!isFlying(p)) {
+            lastYaw = Float.NaN;
+            bank = 0f;
+            return;
+        }
         try {
             Vec3d pos = p.getLerpedPos(alpha);
-            double yaw = Math.toRadians(p.getYaw());
+            float yaw0 = p.getYaw();
+            // Quay phải (yaw tăng) thì cánh phải hạ xuống; độ nghiêng tối đa 35 độ, bám mượt theo khung hình
+            float delta = Float.isNaN(lastYaw) ? 0f : wrap(yaw0 - lastYaw);
+            lastYaw = yaw0;
+            float target = Math.max(-35f, Math.min(35f, -delta * 4f));
+            bank += (target - bank) * 0.12f;
+
+            double yaw = Math.toRadians(yaw0);
             double pitch = Math.toRadians(p.getPitch());
             double cp = Math.cos(pitch);
             double sp = Math.sin(pitch);
             // Minecraft: yaw 0 nhìn về +z. Hướng phải là ngang, hướng lên tính từ phải và hướng nhìn.
             WorldBatch.V f = new WorldBatch.V(-Math.sin(yaw) * cp, -sp, Math.cos(yaw) * cp);
-            WorldBatch.V r = new WorldBatch.V(-Math.cos(yaw), 0, -Math.sin(yaw));
-            WorldBatch.V u = cross(r, f);
+            WorldBatch.V r0 = new WorldBatch.V(-Math.cos(yaw), 0, -Math.sin(yaw));
+            WorldBatch.V u0 = cross(r0, f);
+            // Roll quanh trục nhìn: đưa hướng phải và hướng lên đã nghiêng
+            double br = Math.toRadians(bank);
+            double cb = Math.cos(br);
+            double sb = Math.sin(br);
+            WorldBatch.V r = r0.mul(cb).add(u0.mul(sb));
+            WorldBatch.V u = u0.mul(cb).add(r0.mul(-sb));
             WorldBatch.V center = new WorldBatch.V(pos.x, pos.y + 0.9, pos.z);
 
             WorldBatch b = new WorldBatch(m, cam.x(), cam.y(), cam.z(), false);
@@ -120,14 +140,22 @@ public final class Airplane {
         b.tri(g0, g1, gTop, GLASS);
     }
 
-    /** Hai vệt khói phản lực phun ra từ đầu cánh, phía sau máy bay */
+    /** Hai luồng khói phản lực phụt ra từ hai động cơ nằm dưới cánh, về phía sau máy bay */
     private static void drawExhaust(WorldBatch b, WorldBatch.V c, WorldBatch.V f, WorldBatch.V r, WorldBatch.V u,
                                     double len) {
         for (int sign = -1; sign <= 1; sign += 2) {
-            WorldBatch.V from = point(c, f, r, u, -0.6, sign * 0.9, 0.0);
-            WorldBatch.V to = point(c, f, r, u, -0.6 - len, sign * 0.9, 0.0);
+            WorldBatch.V from = point(c, f, r, u, -0.35, sign * 0.55, -0.14);
+            WorldBatch.V to = point(c, f, r, u, -0.35 - len, sign * 0.55, -0.14);
             b.beam(from, to, 0.05, EXHAUST);
         }
+    }
+
+    /** Đưa độ lệch góc về khoảng (-180, 180] để không nhảy 360 độ khi yaw quay qua mốc */
+    private static float wrap(float d) {
+        float x = d % 360f;
+        if (x > 180f) x -= 360f;
+        if (x < -180f) x += 360f;
+        return x;
     }
 
     private static WorldBatch.V point(WorldBatch.V c, WorldBatch.V f, WorldBatch.V r, WorldBatch.V u,

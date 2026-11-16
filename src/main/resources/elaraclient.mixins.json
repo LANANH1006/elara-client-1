@@ -24,6 +24,7 @@
     "PlayerListHudMixin",
     "ClientWorldSkyMixin",
     "AbstractClientPlayerEntityMixin",
-    "MinecraftClientMixin"
+    "MinecraftClientMixin",
+    "BiomeColorsMixin"
   ]
 }

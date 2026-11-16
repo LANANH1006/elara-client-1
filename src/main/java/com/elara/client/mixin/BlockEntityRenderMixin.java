@@ -20,6 +20,8 @@ public abstract class BlockEntityRenderMixin {
     private void elara$cullBlockEntity(BlockEntity blockEntity, float tickDelta, MatrixStack matrices,
                                        VertexConsumerProvider vertexConsumers, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        // Vật ở tay (rương, biển cầm trên tay) không gắn với thế giới nên không có vị trí thật: luôn vẽ
+        if (blockEntity.getWorld() == null) return;
         if (!CullingManager.keepBlockEntity(blockEntity.getPos())) ci.cancel();
     }
 }

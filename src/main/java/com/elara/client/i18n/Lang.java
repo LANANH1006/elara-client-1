@@ -24,6 +24,7 @@ public final class Lang {
             e("feature.build_guide", "Khung hướng dẫn xây", "Build guide outline"),
             e("desc.build_guide", "Tô chỗ thiếu hoặc đặt sai trong bản vẽ", "Outline missing or wrong blocks"),
             e("set.block_dist", "Khoảng cách (khối)", "Distance (blocks)"),
+            e("set.entity_dist", "Khoảng cách thực thể (khối)", "Entity distance (blocks)"),
             e("builder.open", "Mở Builder", "Open Builder"),
             e("builder.title", "Builder", "Builder"),
             e("builder.file", "Tệp", "File"),
