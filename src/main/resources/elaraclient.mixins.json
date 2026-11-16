@@ -7,8 +7,6 @@
     "defaultRequire": 0
   },
   "client": [
-    "ScreenMixin",
-    "PressableWidgetMixin",
     "ParticleAccessor",
     "ParticleManagerMixin",
     "EntityRenderDispatcherMixin",
@@ -23,7 +21,6 @@
     "PlayerListHudMixin",
     "ClientWorldSkyMixin",
     "AbstractClientPlayerEntityMixin",
-    "MinecraftClientMixin",
     "BiomeColorsMixin"
   ]
 }

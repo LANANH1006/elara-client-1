@@ -23,6 +23,7 @@ import com.elara.client.fx.WorldFx;
 import com.elara.client.ui.ChatKeyboard;
 import com.elara.client.skin.SkinStore;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
 import com.elara.client.fx.PlayerTracker;
 import com.elara.client.hud.KeyTracker;
@@ -51,6 +52,7 @@ public class ElaraClient implements ClientModInitializer {
 
     private static KeyBinding menuKey;
     private static KeyBinding inspectKey;
+    private static boolean titleLogged;
 
     @Override
     public void onInitializeClient() {
@@ -79,6 +81,16 @@ public class ElaraClient implements ClientModInitializer {
         Diag.log("onInitializeClient: đã đăng ký phím");
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // Chưa vào thế giới (màn hình tải Mojang, sảnh chính): chỉ chạy phần nhẹ. Không tick hiệu ứng,
+            // không chạm render, không chạm âm thanh (OpenAL / javax.sound).
+            if (client.world == null) {
+                ElaraConfig.tick();
+                while (inspectKey.wasPressed()) { /* phím G chỉ có tác dụng trong thế giới */ }
+                MusicPlayer.tick(false);
+                handleMenuKey(client);
+                return;
+            }
+
             Warmup.tick();
             CullingManager.tick();
             KeyTracker.tick(client);
@@ -99,19 +111,13 @@ public class ElaraClient implements ClientModInitializer {
             HitFx.tick();
             if (Warmup.heavy()) CombatFx.tick(client);
             MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER));
-
-            while (menuKey.wasPressed()) {
-                if (!AuthorGuard.isValid()) continue;
-                // Mở được cả ở màn hình chính, không cần vào server
-                Screen cur = client.currentScreen;
-                if (cur == null || cur instanceof TitleScreen) {
-                    client.setScreen(new ElaraMenuScreen(cur));
-                }
-            }
+            handleMenuKey(client);
         });
 
         // Dynamic Island luôn vẽ trên đầu màn hình
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
+            // HUD của Elara chỉ vẽ trong thế giới: sảnh chính và màn hình tải không chạm render của mod
+            if (MinecraftClient.getInstance().world == null) return;
             DynamicIslandHud.render(context);
             ElementsHud.render(context);
             CrosshairHud.render(context);
@@ -120,12 +126,18 @@ public class ElaraClient implements ClientModInitializer {
         });
 
         // Hiệu ứng trong thế giới: vòng nhảy, cánh, vòng tầm đánh, mưa 3D, hiệu ứng đánh trúng
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(Effects::render);
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> {
+            if (MinecraftClient.getInstance().world != null) Effects.render(ctx);
+        });
 
         // Màn hình chính chỉ có đúng một nút nhỏ [Elara] ở góc dưới phải, mở Menu Elara.
         // Không vẽ nền, logo hay hiệu ứng nào khác lên sảnh chính: để Minecraft và mod nền (Glaze) tự vẽ.
         ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
             if (!(screen instanceof TitleScreen)) return;
+            if (!titleLogged) {
+                titleLogged = true;
+                Diag.log("sảnh chính: thêm nút Elara");
+            }
             ButtonWidget elara = ButtonWidget.builder(Text.literal("Elara"),
                             b -> client.setScreen(new ElaraMenuScreen(screen)))
                     .dimensions(sw - 58, sh - 24, 50, 18)
@@ -156,5 +168,16 @@ public class ElaraClient implements ClientModInitializer {
             SkinStore.flushNow();
         });
         Diag.log("onInitializeClient: xong");
+    }
+
+    /** Phím Right Shift mở Menu Elara. Mở được cả ở sảnh chính, không cần vào server. */
+    private static void handleMenuKey(MinecraftClient client) {
+        while (menuKey.wasPressed()) {
+            if (!AuthorGuard.isValid()) continue;
+            Screen cur = client.currentScreen;
+            if (cur == null || cur instanceof TitleScreen) {
+                client.setScreen(new ElaraMenuScreen(cur));
+            }
+        }
     }
 }

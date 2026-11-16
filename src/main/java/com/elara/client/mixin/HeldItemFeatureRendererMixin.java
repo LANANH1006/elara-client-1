@@ -1,5 +1,7 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
 import com.elara.client.fx.Weapon3D;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.feature.HeldItemFeatureRenderer;
@@ -29,6 +31,7 @@ public abstract class HeldItemFeatureRendererMixin {
             require = 0
     )
     private void elara$thirdPersonWeapon(MatrixStack matrices, CallbackInfo ci) {
+        if (!ElaraConfig.isOn(Feature.WEAPON_3D)) return;
         if (!Weapon3D.isRenderingLocalPlayer()) return;
         if (Weapon3D.replacesThirdPerson(MinecraftClient.getInstance(), matrices)) {
             Weapon3D.markThirdPerson();

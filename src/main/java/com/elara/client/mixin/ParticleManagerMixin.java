@@ -2,6 +2,9 @@ package com.elara.client.mixin;
 
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
+import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleManager;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,6 +20,9 @@ public abstract class ParticleManagerMixin {
             at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$cullParticle(Particle particle, CallbackInfo ci) {
         if (!AuthorGuard.isValid()) return;
+        // Tắt tính năng hoặc chưa vào thế giới: không làm gì, không ép kiểu
+        if (!ElaraConfig.isOn(Feature.LAG_PARTICLES)) return;
+        if (MinecraftClient.getInstance().world == null) return;
 
         ParticleAccessor p = (ParticleAccessor) particle;
         if (!CullingManager.keepParticle(p.elaraX(), p.elaraY(), p.elaraZ())) {

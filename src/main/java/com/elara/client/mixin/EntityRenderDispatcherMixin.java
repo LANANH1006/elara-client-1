@@ -25,8 +25,13 @@ public abstract class EntityRenderDispatcherMixin {
                                   CallbackInfoReturnable<Boolean> cir) {
         if (!AuthorGuard.isValid()) return;
 
+        // Chưa vào thế giới thì không có thực thể để lọc: thoát sớm
         MinecraftClient client = MinecraftClient.getInstance();
-        Weapon3D.setRenderingLocal(client != null && entity == client.player);
+        if (client == null || client.world == null) {
+            Weapon3D.setRenderingLocal(false);
+            return;
+        }
+        Weapon3D.setRenderingLocal(entity == client.player);
 
         if (Airplane.hidesBody(entity)) {
             cir.setReturnValue(false);

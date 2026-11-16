@@ -2,6 +2,7 @@ package com.elara.client.mixin;
 
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,6 +17,8 @@ public abstract class SpriteAnimatorMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$noBlockAnim(CallbackInfo ci) {
+        // Ngoài thế giới không tắt hoạt ảnh: để game tự chạy như bình thường
+        if (MinecraftClient.getInstance().world == null) return;
         if (ElaraConfig.isOn(Feature.NO_BLOCK_ANIM)) {
             ci.cancel();
         }
