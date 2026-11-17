@@ -1,5 +1,7 @@
 package com.elara.client.i18n;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Chuỗi giao diện bằng Tiếng Việt (vi) và English (en) */
@@ -8,7 +10,7 @@ public final class Lang {
 
     private static Language current = Language.VI;
 
-    private static final Map<String, String[]> TEXT = Map.ofEntries(
+    private static final Map<String, String[]> TEXT = table(
             e("tab.fix_lag", "Fix Lag", "Fix Lag"),
             e("tab.effects", "Hiệu ứng", "Effects"),
             e("tab.knives", "Dao", "Knives"),
@@ -133,7 +135,6 @@ public final class Lang {
             e("hit.sparks", "Tia lửa", "Sparks"),
             e("music.title", "Trình phát nhạc", "Music player"),
             e("music.dir", "Thư mục nhạc", "Music folder"),
-            e("music.hint", "Bỏ file .wav, .mp3 hoặc .ogg vào thư mục rồi bấm Quét lại", "Put .wav, .mp3 or .ogg files in the folder, then press Rescan"),
             e("music.open", "Mở trình phát nhạc >", "Open music player >"),
             e("music.empty", "Thả nhạc vào elara/music rồi Quét lại", "Put music in elara/music, then Rescan"),
             e("music.rescan", "Quét lại", "Rescan"),
@@ -397,6 +398,21 @@ public final class Lang {
 
     private static Map.Entry<String, String[]> e(String key, String vi, String en) {
         return Map.entry(key, new String[] {vi, en});
+    }
+
+    /**
+     * Gom các mục thành bảng tra. Khóa trùng không làm lỗi lúc khởi động:
+     * mục sau ghi đè mục trước và in cảnh báo ra stderr.
+     */
+    @SafeVarargs
+    private static Map<String, String[]> table(Map.Entry<String, String[]>... entries) {
+        Map<String, String[]> out = new LinkedHashMap<>();
+        for (Map.Entry<String, String[]> entry : entries) {
+            if (out.put(entry.getKey(), entry.getValue()) != null) {
+                System.err.println("[Elara] Lang: khóa trùng " + entry.getKey());
+            }
+        }
+        return Collections.unmodifiableMap(out);
     }
 
     public static String get(String key) {
