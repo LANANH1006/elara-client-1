@@ -65,8 +65,10 @@ public class ElaraClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        Diag.boot(1, "init start");
         Diag.log("onInitializeClient: bắt đầu");
         ElaraConfig.load();
+        Diag.boot(2, "config/lang ok");
         Diag.log("onInitializeClient: đã nạp cấu hình");
         AuthorGuard.isValid(); // kiểm tra ngay khi khởi động để log sớm
         Diag.log("onInitializeClient: đã kiểm tra bản quyền");
@@ -87,6 +89,8 @@ public class ElaraClient implements ClientModInitializer {
                 "key.category.elaraclient.main"
         ));
 
+        // MusicPlayer không có bước khởi tạo lúc start (nạp khi mở trình phát), nên mốc này chỉ đánh dấu đã qua phần nhạc
+        Diag.boot(3, "music init ok");
         Diag.log("onInitializeClient: đã đăng ký phím");
 
         // Màn hình chính chỉ có đúng một nút nhỏ [Elara] ở góc dưới phải, mở Menu Elara.
@@ -94,11 +98,13 @@ public class ElaraClient implements ClientModInitializer {
 
         if (ISOLATE_TITLE_ONLY) {
             Diag.log("onInitializeClient: CHẾ ĐỘ CÔ LẬP, chỉ nút [Elara] ở sảnh chính");
+            Diag.boot(4, "events registered");
             Diag.log("onInitializeClient: xong");
             return;
         }
 
         registerGameplayCallbacks();
+        Diag.boot(4, "events registered");
         Diag.log("onInitializeClient: xong");
     }
 
@@ -106,6 +112,7 @@ public class ElaraClient implements ClientModInitializer {
     private static void registerTitleButton() {
         ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> Fault.run("title.button", () -> {
             if (!(screen instanceof TitleScreen)) return;
+            Diag.boot(5, "TitleScreen afterInit");
             if (!titleLogged) {
                 titleLogged = true;
                 Diag.log("sảnh chính: thêm nút Elara");
@@ -115,6 +122,7 @@ public class ElaraClient implements ClientModInitializer {
                     .dimensions(sw - 58, sh - 24, 50, 18)
                     .build();
             Screens.getButtons(screen).add(elara);
+            Diag.boot(6, "TitleScreen ready");
         }));
     }
 

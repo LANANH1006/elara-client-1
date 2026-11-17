@@ -15,7 +15,6 @@
     "HeldItemFeatureRendererMixin",
     "InGameOverlayRendererMixin",
     "BackgroundRendererMixin",
-    "SpriteAnimatorMixin",
     "BlockEntityRenderMixin",
     "EntityRendererBadgeMixin",
     "PlayerListHudMixin",

@@ -14,6 +14,9 @@ import java.nio.charset.StandardCharsets;
  */
 final class AudioDecoder {
 
+    /** Số chunk WAV tối đa trước khi bỏ: chặn vòng đọc chunk không dừng */
+    private static final int MAX_CHUNKS = 256;
+
     private AudioDecoder() {}
 
     /**
@@ -39,7 +42,9 @@ final class AudioDecoder {
         int channels = 0;
         int rate = 0;
         int bits = 0;
+        int chunks = 0;
         while (true) {
+            if (++chunks > MAX_CHUNKS) throw new IOException("WAV có quá nhiều chunk");
             byte[] h = in.readNBytes(8);
             if (h.length < 8) throw new IOException("WAV thiếu chunk dữ liệu");
             String id = ascii(h, 0);

@@ -1,14 +1,14 @@
 package com.elara.client.skin;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.zip.CRC32;
+import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
-import java.util.zip.InflaterInputStream;
+import java.util.zip.Inflater;
 
 /**
  * Đọc và ghi PNG bằng java.util.zip, không dùng java.awt hay javax.imageio.
@@ -27,6 +27,10 @@ final class PngCodec {
     private static final byte[] SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
     /** Chặn kích thước để một file hỏng không đòi hàng trăm MB bộ nhớ */
     private static final int MAX_SIDE = 1024;
+    /** Số khối tối đa trong một file: chặn vòng đọc khối không dừng */
+    private static final int MAX_CHUNKS = 1024;
+    /** Số lần inflate liên tiếp không tiến được trước khi bỏ */
+    private static final int MAX_STALLS = 8;
 
     private PngCodec() {}
 
@@ -45,7 +49,9 @@ final class PngCodec {
         ByteArrayOutputStream idat = new ByteArrayOutputStream();
 
         int pos = SIGNATURE.length;
+        int chunks = 0;
         while (pos + 8 <= png.length) {
+            if (++chunks > MAX_CHUNKS) throw new IOException("PNG có quá nhiều khối");
             int len = readInt(png, pos);
             String type = new String(png, pos + 4, 4, StandardCharsets.US_ASCII);
             int data = pos + 8;
@@ -85,11 +91,7 @@ final class PngCodec {
 
         int stride = width * channels;
         int expected = height * (stride + 1);
-        byte[] raw;
-        try (InflaterInputStream in = new InflaterInputStream(new ByteArrayInputStream(idat.toByteArray()))) {
-            raw = in.readNBytes(expected);
-        }
-        if (raw.length < expected) throw new IOException("dữ liệu ảnh PNG bị thiếu");
+        byte[] raw = inflate(idat.toByteArray(), expected);
         byte[] px = unfilter(raw, stride, height, channels);
 
         int[] argb = new int[width * height];
@@ -97,6 +99,37 @@ final class PngCodec {
             argb[i] = toArgb(colorType, px, i * channels, palette, trns);
         }
         return new Image(width, height, argb);
+    }
+
+    /**
+     * Giải nén đúng {@code expected} byte từ luồng zlib. Nếu inflate không tiến được quá MAX_STALLS lần liên tiếp,
+     * hoặc hết dữ liệu nhập trước khi đủ byte, thì ném IOException. Vòng lặp này không bao giờ quay mãi.
+     */
+    private static byte[] inflate(byte[] zlib, int expected) throws IOException {
+        Inflater inf = new Inflater();
+        try {
+            inf.setInput(zlib);
+            byte[] out = new byte[expected];
+            int off = 0;
+            int stalls = 0;
+            while (off < expected && !inf.finished()) {
+                int n = inf.inflate(out, off, expected - off);
+                if (n > 0) {
+                    off += n;
+                    stalls = 0;
+                } else if (inf.needsInput() || inf.needsDictionary()) {
+                    break;
+                } else if (++stalls > MAX_STALLS) {
+                    throw new IOException("nén PNG không tiến triển");
+                }
+            }
+            if (off < expected) throw new IOException("dữ liệu ảnh PNG bị thiếu");
+            return out;
+        } catch (DataFormatException e) {
+            throw new IOException("dữ liệu nén PNG hỏng", e);
+        } finally {
+            inf.end();
+        }
     }
 
     /** Bỏ bộ lọc từng hàng (none, sub, up, average, paeth). Trả về dữ liệu pixel thô, không còn byte lọc. */
