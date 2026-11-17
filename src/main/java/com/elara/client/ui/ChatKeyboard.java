@@ -40,7 +40,7 @@ public final class ChatKeyboard {
 
     private enum Kind { CHAR, SHIFT, BACK, SPACE, PASTE, ENTER, HIDE }
 
-    private enum Act { MENU, VIEW, SPIN, LAG, KEYS }
+    private enum Act { MENU, SPIN, LAG, KEYS }
 
     /** Mô tả một phím trước khi đặt vào hàng */
     private static final class Spec {
@@ -184,7 +184,6 @@ public final class ChatKeyboard {
 
         int x = EDGE;
         x = addButton(c, x, Act.MENU, Lang.get("chatkb.menu"));
-        x = addButton(c, x, Act.VIEW, Lang.get("chatkb.view"));
         x = addButton(c, x, Act.SPIN, Lang.get("chatkb.spin"));
         addButton(c, x, Act.LAG, Lang.get("chatkb.lag"));
         String keysLabel = Lang.get("chatkb.keys");
@@ -281,7 +280,6 @@ public final class ChatKeyboard {
     private static void run(Act act, MinecraftClient c, Screen screen) {
         switch (act) {
             case MENU -> c.setScreen(new ElaraMenuScreen(screen));
-            case VIEW -> c.options.setPerspective(c.options.getPerspective().next());
             case SPIN -> KnifeAnim.inspect(c);
             case LAG -> LagFix.toggleMax();
             case KEYS -> open = !open;

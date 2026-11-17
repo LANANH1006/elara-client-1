@@ -135,6 +135,7 @@ public class ElaraClient implements ClientModInitializer {
 
         // Các phần HUD chạy độc lập: một phần lỗi không làm mất các phần còn lại
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
+            if (!ElaraConfig.isAnyActive()) return;
             if (Gate.loading() || MinecraftClient.getInstance().world == null) return;
             Fault.run("hud.island", () -> DynamicIslandHud.render(context));
             Fault.run("hud.elements", () -> ElementsHud.render(context));
@@ -145,6 +146,7 @@ public class ElaraClient implements ClientModInitializer {
 
         // Hiệu ứng trong thế giới (xem Effects)
         WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> {
+            if (!ElaraConfig.isAnyActive()) return;
             if (!Gate.loading() && MinecraftClient.getInstance().world != null) {
                 Fault.run("world.effects", () -> Effects.render(ctx));
             }
@@ -152,11 +154,13 @@ public class ElaraClient implements ClientModInitializer {
 
         // Bàn phím ảo và thanh nút nhanh trên màn hình chat (tính năng Chat Touch)
         ScreenEvents.AFTER_INIT.register((client, screen, sw, sh) -> {
+            if (!ElaraConfig.isAnyActive()) return;
             if (screen instanceof ChatScreen) Fault.run("chat.keyboard", () -> ChatKeyboard.attach(screen));
         });
 
         // Đánh trúng thực thể: tạo hiệu ứng tại vị trí mục tiêu (không chặn hành động)
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!ElaraConfig.isAnyActive()) return ActionResult.PASS;
             Fault.run("attack.hitfx", () -> {
                 if (ElaraConfig.isOn(Feature.HIT_EFFECT)) HitFx.spawn(entity);
             });
@@ -189,6 +193,14 @@ public class ElaraClient implements ClientModInitializer {
             return;
         }
 
+        // Tắt hết tính năng: chỉ còn ghi cấu hình, nhạc và phím mở menu. Không tick hiệu ứng nào.
+        if (!ElaraConfig.isAnyActive()) {
+            Fault.run("tick.config", () -> ElaraConfig.tick());
+            Fault.run("tick.music", () -> MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER)));
+            while (inspectKey.wasPressed()) { /* không có tính năng dao: chỉ rút phím cho khỏi tích lũy */ }
+            Fault.run("tick.menu", () -> handleMenuKey(client));
+            return;
+        }
         Fault.run("tick.warmup", () -> Warmup.tick());
         Fault.run("tick.culling", () -> CullingManager.tick());
         // Các bước theo dõi chỉ chạy khi có tính năng dùng đến chúng. Tắt hết thì không tốn gì.

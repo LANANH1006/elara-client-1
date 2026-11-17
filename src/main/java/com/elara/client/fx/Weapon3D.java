@@ -243,7 +243,7 @@ public final class Weapon3D {
 
     // ---------- Góc nhìn thứ ba ----------
 
-    /** Đang vẽ người chơi local. Được đặt ngay trước khi vẽ mỗi thực thể (EntityRenderDispatcherMixin). */
+    /** Đang vẽ người chơi local. Được đặt ngay trước khi vẽ mỗi thực thể (mixin đó đã được gỡ, nên hiện luôn false). */
     private static volatile boolean localRendering;
 
     public static void setRenderingLocal(boolean on) {
@@ -256,8 +256,8 @@ public final class Weapon3D {
 
     /**
      * Trả về true khi vật cầm gốc của người chơi local nên được thay bằng dao 3D: góc nhìn thứ ba,
-     * đang cầm kiếm ở tay chính, tay phụ trống, không mở màn hình nào. Người chơi local được nhận biết
-     * nhờ setRenderingLocal, nên không cần đối chiếu vị trí (vị trí cũ làm nhầm khi hai người đứng sát).
+     * đang cầm kiếm ở tay chính, tay phụ trống, không mở màn hình nào. Hiện không còn mixin nào gọi
+     * setRenderingLocal, nên nhánh góc nhìn thứ ba này không chạy; giữ lại để bật lại sau.
      */
     public static boolean replacesThirdPerson(MinecraftClient client, MatrixStack m) {
         if (broken || !ElaraConfig.isOn(Feature.WEAPON_3D) || !Warmup.heavy()) return false;

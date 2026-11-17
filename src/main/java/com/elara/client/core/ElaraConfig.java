@@ -179,6 +179,17 @@ public final class ElaraConfig {
     }
 
     /** Bật/tắt. Mọi tính năng đều mặc định tắt. */
+    /** Mọi tính năng, lấy một lần để isAnyActive không tạo mảng mới mỗi khung hình */
+    private static final Feature[] ALL_FEATURES = Feature.values();
+
+    /** true nếu có ít nhất một tính năng đang bật. Các callback dùng để thoát sớm khi tắt hết. */
+    public static boolean isAnyActive() {
+        for (Feature f : ALL_FEATURES) {
+            if (isOn(f)) return true;
+        }
+        return false;
+    }
+
     public static boolean isOn(Feature f) {
         return data.toggles.getOrDefault(f.name(), false);
     }

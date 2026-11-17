@@ -6,7 +6,6 @@ import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.core.Fault;
 import com.elara.client.core.MemoryTools;
-import com.elara.client.core.PackManager;
 import com.elara.client.i18n.Lang;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -27,7 +26,6 @@ public class ElaraMenuScreen extends Screen {
     private static final int CARD_H = 46;
     private static final int CARD_GAP = 6;
     private static final int EXTRA_H = 28;
-    private static final int PACK_ROW_H = 24;
     private static final int DRAG_SLOP = 4;
     private static final int SW_W = 26;
     private static final int SW_H = 14;
@@ -97,9 +95,6 @@ public class ElaraMenuScreen extends Screen {
         return cardY(0) + ((n + 1) / 2) * (CARD_H + CARD_GAP) + 6 + k * EXTRA_H + 4;
     }
 
-    private int packToggleX() { return px + PAD + (pw - PAD * 2) - SW_W; }
-    private int packDownX() { return packToggleX() - 6 - 40; }
-    private int packUpX() { return packDownX() - 4 - 34; }
 
     /** Số hàng phụ ở cuối mỗi tab */
     private static int extrasFor(Feature.Group g) {
@@ -113,7 +108,7 @@ public class ElaraMenuScreen extends Screen {
 
     private int contentHeight() {
         if (tab == Feature.Group.PACK) {
-            return PackManager.list(MinecraftClient.getInstance()).size() * PACK_ROW_H + EXTRA_H * 2;
+            return EXTRA_H * 3;
         }
         int n = Feature.inGroup(tab).size();
         int h = ((n + 1) / 2) * (CARD_H + CARD_GAP);
@@ -325,30 +320,13 @@ public class ElaraMenuScreen extends Screen {
                 x + w / 2, y + (h - 8) / 2, IosStyle.fadeColor(IosStyle.TEXT));
     }
 
-    /** Tab Gói tài nguyên: danh sách gói thật từ thư mục resourcepacks */
+    /** Tab Gói tài nguyên chỉ hiển thị chú thích. Mod không đọc, không đổi và không tải lại gói tài nguyên. */
     private void drawPacks(DrawContext ctx) {
-        List<PackManager.Entry> entries = PackManager.list(MinecraftClient.getInstance());
         int base = contentTop() - scroll;
-        if (entries.isEmpty()) {
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("pack.empty")),
-                    px + pw / 2, base + 4, IosStyle.fadeColor(IosStyle.TEXT_DIM));
-        }
-        for (int i = 0; i < entries.size(); i++) {
-            PackManager.Entry e = entries.get(i);
-            int y = base + i * PACK_ROW_H;
-            int nameMax = (e.enabled() ? packUpX() : packToggleX()) - 6 - (px + PAD);
-            ctx.drawText(textRenderer, Text.literal(trim(e.title(), nameMax)), px + PAD, y + 8,
-                    IosStyle.fadeColor(e.enabled() ? IosStyle.TEXT : IosStyle.TEXT_DIM), false);
-            if (e.enabled()) {
-                drawPill(ctx, packUpX(), y + 3, 34, 18, Lang.get("pack.up"));
-                drawPill(ctx, packDownX(), y + 3, 40, 18, Lang.get("pack.down"));
-            }
-            IosStyle.toggleSwitch(ctx, packToggleX(), y + 5, e.enabled(), "pack:" + e.id(), SW_W, SW_H);
-        }
-        int ry = base + entries.size() * PACK_ROW_H + 4;
-        drawPill(ctx, px + PAD, ry, pw - PAD * 2, 20, Lang.get("pack.reload"));
-        ctx.drawText(textRenderer, Text.literal(Lang.get("pack.hint")), px + PAD, ry + EXTRA_H,
-                IosStyle.fadeColor(IosStyle.TEXT_DIM), false);
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("pack.note1")),
+                px + pw / 2, base + 4, IosStyle.fadeColor(IosStyle.TEXT_DIM));
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(Lang.get("pack.note2")),
+                px + pw / 2, base + 16, IosStyle.fadeColor(IosStyle.TEXT_DIM));
     }
 
     private String trim(String s, int maxPx) {
@@ -425,10 +403,7 @@ public class ElaraMenuScreen extends Screen {
     /** Thả chuột mà không kéo đi xa thì coi là một lần chạm */
     private void tap(double mx, double my) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (tab == Feature.Group.PACK) {
-            tapPacks(client, mx, my);
-            return;
-        }
+        if (tab == Feature.Group.PACK) return;
         List<Feature> items = Feature.inGroup(tab);
         int n = items.size();
         for (int i = 0; i < n; i++) {
@@ -480,31 +455,6 @@ public class ElaraMenuScreen extends Screen {
             client.setScreen(new MusicScreen(this));
         } else if (inside(mx, my, px + PAD, extraY(n, 8), full, 20)) {
             client.setScreen(new SkinScreen(this));
-        }
-    }
-
-    private void tapPacks(MinecraftClient client, double mx, double my) {
-        List<PackManager.Entry> entries = PackManager.list(client);
-        int base = contentTop() - scroll;
-        for (int i = 0; i < entries.size(); i++) {
-            PackManager.Entry e = entries.get(i);
-            int y = base + i * PACK_ROW_H;
-            if (inside(mx, my, packToggleX() - 4, y, SW_W + 8, PACK_ROW_H)) {
-                PackManager.setEnabled(client, e.id(), !e.enabled());
-                return;
-            }
-            if (e.enabled() && inside(mx, my, packUpX(), y + 3, 34, 18)) {
-                PackManager.move(client, e.id(), -1);
-                return;
-            }
-            if (e.enabled() && inside(mx, my, packDownX(), y + 3, 40, 18)) {
-                PackManager.move(client, e.id(), 1);
-                return;
-            }
-        }
-        int ry = base + entries.size() * PACK_ROW_H + 4;
-        if (inside(mx, my, px + PAD, ry, pw - PAD * 2, 20)) {
-            PackManager.reload(client);
         }
     }
 

@@ -7,9 +7,6 @@
     "defaultRequire": 0
   },
   "client": [
-    "ParticleAccessor",
-    "ParticleManagerMixin",
-    "EntityRenderDispatcherMixin",
     "InGameHudMixin",
     "HeldItemRendererMixin",
     "HeldItemFeatureRendererMixin",
@@ -19,7 +16,6 @@
     "EntityRendererBadgeMixin",
     "PlayerListHudMixin",
     "ClientWorldSkyMixin",
-    "AbstractClientPlayerEntityMixin",
-    "BiomeColorsMixin"
+    "AbstractClientPlayerEntityMixin"
   ]
 }

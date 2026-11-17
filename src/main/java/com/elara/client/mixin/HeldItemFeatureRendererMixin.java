@@ -19,8 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Góc nhìn thứ ba (F5, FreeLook): khi người chơi local đang cầm kiếm, bỏ vật cầm gốc của game rồi
- * để Weapon3D vẽ dao CS2 / Katana 3D. Người chơi local được nhận biết nhờ EntityRenderDispatcherMixin,
- * nên người chơi khác đứng sát không bị thay nhầm.
+ * để Weapon3D vẽ dao CS2 / Katana 3D. Mixin nhận biết người chơi local đã được gỡ,
+ * nên tính năng này hiện không chạy.
  *
  * Chữ ký lấy từ mapping Yarn 1.21.4 (mappings/net/minecraft/client/render/entity/feature/HeldItemFeatureRenderer.mapping):
  * HeldItemFeatureRenderer tự khai báo renderItem(ArmedEntityRenderState, ItemRenderState, Arm, MatrixStack,

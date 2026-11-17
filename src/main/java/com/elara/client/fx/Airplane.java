@@ -12,7 +12,7 @@ import org.joml.Matrix4f;
 
 /**
  * Biến hình máy bay khi bay (bay sáng tạo hoặc cánh lượn Elytra). Mô hình người của chính mình được ẩn
- * (EntityRenderDispatcherMixin), và máy bay phản lực được vẽ bằng WorldBatch quanh người chơi, không dùng texture,
+ * (mixin đó đã được gỡ), và máy bay phản lực được vẽ bằng WorldBatch quanh người chơi, không dùng texture,
  * nên nhẹ. Không vẽ ở góc nhìn thứ nhất vì camera nằm trong thân máy bay.
  */
 public final class Airplane {
