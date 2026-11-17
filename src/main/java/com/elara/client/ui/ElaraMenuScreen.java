@@ -4,6 +4,7 @@ import com.elara.client.ElaraClient;
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import com.elara.client.core.Fault;
 import com.elara.client.core.MemoryTools;
 import com.elara.client.core.PackManager;
 import com.elara.client.i18n.Lang;
@@ -150,6 +151,16 @@ public class ElaraMenuScreen extends Screen {
             ctx.getMatrices().pop();
             IosStyle.setFade(1f);
         }
+        drawFaultLine(ctx);
+    }
+
+    /** Dòng đỏ nhỏ ở đáy menu: có đoạn bị tắt vì lỗi trong phiên này thì báo cho người chơi biết ngay */
+    private void drawFaultLine(DrawContext ctx) {
+        String key = Fault.lastKey();
+        if (key == null) return;
+        int more = Fault.count() - 1;
+        String msg = "Lỗi: " + key + (more > 0 ? " (+" + more + ")" : "") + " - xem config/elara/error.log";
+        ctx.drawText(textRenderer, Text.literal(trim(msg, width - 12)), 6, height - 12, 0xFFFF4D4D, true);
     }
 
     private void drawFrame(DrawContext ctx) {

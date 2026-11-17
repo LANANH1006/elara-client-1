@@ -1,6 +1,7 @@
 package com.elara.client.fx;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Feature;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
@@ -238,7 +239,7 @@ public final class CombatFx {
             add.flush();
         } catch (RuntimeException ex) {
             broken = true;
-            System.err.println("[Elara] Tắt hiệu ứng PvP do lỗi: " + ex);
+            Fault.fail("fx.pvp", ex);
         }
     }
 

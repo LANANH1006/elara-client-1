@@ -1,6 +1,7 @@
 package com.elara.client.ui;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.fx.WorldBatch;
 import net.minecraft.client.gui.DrawContext;
 
@@ -63,7 +64,7 @@ public final class TitleScene {
             return true;
         } catch (RuntimeException e) {
             failed = true;
-            System.err.println("[Elara] Cảnh 3D lỗi, chuyển về ảnh tĩnh: " + e);
+            Fault.fail("title.scene", e);
             return false;
         }
     }

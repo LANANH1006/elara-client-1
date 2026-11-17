@@ -2,7 +2,9 @@ package com.elara.client.mixin;
 
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
+import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Fault;
+import com.elara.client.core.Feature;
 import com.elara.client.core.Gate;
 import com.elara.client.fx.Airplane;
 import com.elara.client.fx.Weapon3D;
@@ -18,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Trước khi vẽ mỗi thực thể: đánh dấu có phải người chơi local không (để vũ khí 3D ở F5 nhận biết đúng người),
  * ẩn mô hình người chơi local khi đang biến hình máy bay, và không vẽ entity ở xa hoặc bị tường che.
+ * Khi ba tính năng dùng đến thực thể đều tắt thì thoát ngay, không làm gì thêm.
  */
 @Mixin(EntityRenderDispatcher.class)
 public abstract class EntityRenderDispatcherMixin {
@@ -31,6 +34,10 @@ public abstract class EntityRenderDispatcherMixin {
         try {
             if (!AuthorGuard.isValid()) return;
             if (Gate.loading()) return;
+            if (!ElaraConfig.isOn(Feature.LAG_ENTITIES) && !ElaraConfig.isOn(Feature.AIRPLANE_MORPH)
+                    && !ElaraConfig.isOn(Feature.WEAPON_3D)) {
+                return;
+            }
             // Chưa vào thế giới thì không có thực thể để lọc: thoát sớm
             MinecraftClient client = MinecraftClient.getInstance();
             if (client == null || client.world == null) {

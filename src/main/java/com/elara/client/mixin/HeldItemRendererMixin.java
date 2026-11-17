@@ -1,6 +1,8 @@
 package com.elara.client.mixin;
 
+import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Fault;
+import com.elara.client.core.Feature;
 import com.elara.client.fx.KnifeAnim;
 import com.elara.client.fx.Weapon3D;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -17,7 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Bọc quanh việc vẽ vật cầm trên tay ở góc nhìn thứ nhất.
  *
- * HEAD luôn push ma trận và bật cờ firstPersonPushed. RETURN pop khi cờ còn bật.
+ * Chỉ khi Dao CS2 hoặc Vũ khí 3D đang bật, và đúng tay chính, HEAD mới push ma trận và bật cờ.
+ * Khi tắt hết thì HEAD thoát ngay, không push và không chạm gì. RETURN pop khi cờ còn bật.
  * Nhánh vẽ vũ khí 3D tự pop rồi xóa cờ trước khi hủy, vì khi hủy ở HEAD thì RETURN không chạy.
  * Lỗi trong thân HEAD chỉ tắt mixin này, cặp push/pop vẫn cân bằng nhờ cờ.
  */
@@ -37,11 +40,12 @@ public abstract class HeldItemRendererMixin {
                                  float swingProgress, ItemStack item, float equipProgress,
                                  MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light,
                                  CallbackInfo ci) {
+        firstPersonPushed = false;
+        if (Fault.off(FAULT_KEY) || hand != Hand.MAIN_HAND) return;
+        if (!ElaraConfig.isOn(Feature.WEAPON_3D) && !ElaraConfig.isOn(Feature.KNIFE_ANIM)) return;
         matrices.push();
         firstPersonPushed = true;
-        if (Fault.off(FAULT_KEY)) return;
         try {
-            if (hand != Hand.MAIN_HAND) return;
             if (Weapon3D.drawFirstPerson(matrices, player, item, swingProgress, equipProgress)) {
                 // Đã vẽ vũ khí 3D: bỏ bản gốc của game và pop tay tự cân bằng
                 firstPersonPushed = false;

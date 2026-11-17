@@ -1,20 +1,38 @@
 package com.elara.client.core;
 
+import net.fabricmc.loader.api.FabricLoader;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
- * Cầu dao cho từng đoạn mã chạy mỗi khung hình hoặc mỗi tick (render, HUD, mixin, tick).
+ * Cầu dao cho từng đoạn mã chạy mỗi khung hình hoặc mỗi tick (render, HUD, mixin, tick, tính năng).
  *
- * Đoạn nào ném lỗi thì ghi stacktrace đúng một lần, rồi tắt đoạn đó đến khi khởi động lại.
- * Các đoạn khác vẫn chạy bình thường. Nhờ vậy một lỗi không lặp lại 60 lần mỗi giây, không in spam
- * ra System.out, và máy không nóng lên vì ghi log liên tục.
+ * Đoạn nào ném lỗi lần đầu thì: in stacktrace ra log một lần, ghi cùng stacktrace vào
+ * config/elara/error.log (ghi ngay, đóng file ngay), rồi tắt đoạn đó đến khi khởi động lại.
+ * Các đoạn khác vẫn chạy. Menu Elara hiện một dòng đỏ khi phiên này có đoạn bị tắt vì lỗi.
  * OutOfMemoryError vẫn được văng ra qua Guard.rethrowIfFatal.
  */
 public final class Fault {
 
+    /** File lỗi để đọc trên điện thoại: config/elara/error.log */
+    private static final Path LOG = FabricLoader.getInstance().getConfigDir()
+            .resolve("elara").resolve("error.log");
+    /** Quá giới hạn này thì không ghi thêm, để file không phình mãi */
+    private static final long MAX_LOG_BYTES = 256L * 1024L;
+
     private static final Set<String> OFF = ConcurrentHashMap.newKeySet();
+    private static volatile String lastKey;
+    private static boolean sessionHeaderWritten;
 
     private Fault() {}
 
@@ -44,12 +62,48 @@ public final class Fault {
         }
     }
 
-    /** Ghi lỗi của một đoạn. Lần đầu: in stacktrace và tắt đoạn. Các lần sau: không in gì. */
-    public static void fail(String key, Throwable t) {
+    /** Số đoạn đang bị tắt vì lỗi trong phiên này */
+    public static int count() {
+        return OFF.size();
+    }
+
+    /** Tên đoạn bị lỗi gần nhất trong phiên này, hoặc null nếu chưa có lỗi */
+    public static String lastKey() {
+        return lastKey;
+    }
+
+    /**
+     * Ghi lỗi của một đoạn. Lần đầu: in stacktrace, ghi error.log, rồi tắt đoạn.
+     * Các lần sau của cùng đoạn: không làm gì, để không spam mỗi khung hình.
+     */
+    public static synchronized void fail(String key, Throwable t) {
         Guard.rethrowIfFatal(t);
         if (!OFF.add(key)) return;
+        lastKey = key;
         System.out.println("[Elara] Tắt \"" + key + "\" vì lỗi, chỉ ghi một lần: " + t);
         t.printStackTrace(System.out);
         System.out.flush();
+        writeLog(key, t);
+    }
+
+    /** Ghi một khối lỗi vào config/elara/error.log. Không bao giờ ném ra ngoài: lỗi ghi file chỉ in ra log. */
+    private static void writeLog(String key, Throwable t) {
+        try {
+            if (Files.exists(LOG) && Files.size(LOG) > MAX_LOG_BYTES) return;
+            Files.createDirectories(LOG.getParent());
+            StringWriter sw = new StringWriter();
+            t.printStackTrace(new PrintWriter(sw));
+            LocalDateTime now = LocalDateTime.now().withNano(0);
+            StringBuilder sb = new StringBuilder();
+            if (!sessionHeaderWritten) {
+                sessionHeaderWritten = true;
+                sb.append("\n==== Phiên mới ").append(now).append(" ====\n");
+            }
+            sb.append("[").append(now).append("] Tắt \"").append(key).append("\"\n").append(sw);
+            Files.writeString(LOG, sb.toString(), StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException | RuntimeException e) {
+            System.err.println("[Elara] Không ghi được error.log: " + e);
+        }
     }
 }

@@ -47,6 +47,7 @@ public enum Feature {
     SOFT_SHADOW(Group.WORLD),
     LITE_SHADER(Group.WORLD),
 
+    DYNAMIC_ISLAND(Group.MISC),
     MUSIC_PLAYER(Group.MISC),
     LYRICS_ISLAND(Group.MISC),
     LYRICS_SKY(Group.MISC),

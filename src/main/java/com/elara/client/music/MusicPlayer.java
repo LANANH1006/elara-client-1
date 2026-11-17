@@ -1,6 +1,7 @@
 package com.elara.client.music;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Feature;
 import com.elara.client.core.Guard;
 import com.elara.client.i18n.Lang;
@@ -361,7 +362,7 @@ public final class MusicPlayer {
 
     private static String failureText(Throwable t) {
         if (t instanceof TooLong) return Lang.get("snd.too_long");
-        System.err.println("[Elara] Không phát được nhạc: " + t);
+        Fault.fail("music.play", t);
         String detail = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
         return Lang.get("snd.err") + detail;
     }
@@ -551,7 +552,7 @@ public final class MusicPlayer {
         } catch (Throwable t) {
             Guard.rethrowIfFatal(t);
             alBroken = true;
-            System.err.println("[Elara] Không mở được OpenAL cho nhạc: " + t);
+            Fault.fail("music.openal", t);
             return false;
         }
     }

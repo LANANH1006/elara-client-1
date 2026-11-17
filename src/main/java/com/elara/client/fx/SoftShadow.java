@@ -3,6 +3,7 @@ package com.elara.client.fx;
 import com.elara.client.core.Guard;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Feature;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
@@ -50,7 +51,7 @@ public final class SoftShadow {
             Guard.rethrowIfFatal(t);
             broken = true;
             count = 0;
-            System.err.println("[Elara] Tắt Bóng mềm do lỗi: " + t);
+            Fault.fail("fx.softshadow", t);
         }
     }
 

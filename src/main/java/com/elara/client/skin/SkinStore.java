@@ -1,6 +1,7 @@
 package com.elara.client.skin;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Guard;
 import com.elara.client.i18n.Lang;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -414,7 +415,7 @@ public final class SkinStore {
             Guard.rethrowIfFatal(t);
             failed = true;
             dirty = false;
-            System.err.println("[Elara] Không đưa được skin lên GPU, tắt skin tùy chỉnh: " + t);
+            Fault.fail("skin.upload", t);
         }
     }
 }

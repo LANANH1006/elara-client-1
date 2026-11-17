@@ -183,11 +183,14 @@ public class ElaraClient implements ClientModInitializer {
 
         Fault.run("tick.warmup", () -> Warmup.tick());
         Fault.run("tick.culling", () -> CullingManager.tick());
-        Fault.run("tick.keys", () -> KeyTracker.tick(client));
-        Fault.run("tick.player", () -> PlayerTracker.tick(client));
-        Fault.run("tick.motion", () -> PlayerMotion.tick(client));
+        // Các bước theo dõi chỉ chạy khi có tính năng dùng đến chúng. Tắt hết thì không tốn gì.
+        if (ElaraConfig.isOn(Feature.KEYSTROKES)) Fault.run("tick.keys", () -> KeyTracker.tick(client));
+        if (playerFxOn()) {
+            Fault.run("tick.player", () -> PlayerTracker.tick(client));
+            Fault.run("tick.motion", () -> PlayerMotion.tick(client));
+        }
         Fault.run("tick.buildguide", () -> BuildGuide.tick(client));
-        Fault.run("tick.knife", () -> KnifeAnim.tick(client));
+        if (anyOn(Feature.Group.KNIVES)) Fault.run("tick.knife", () -> KnifeAnim.tick(client));
         // Tính toán thế giới và bóng: vài tick đầu sau khi vào map thì tạm dừng
         if (Warmup.heavy()) {
             Fault.run("tick.worldfx", () -> WorldFx.tick(client));
@@ -204,6 +207,19 @@ public class ElaraClient implements ClientModInitializer {
         if (Warmup.heavy()) Fault.run("tick.combat", () -> CombatFx.tick(client));
         Fault.run("tick.music", () -> MusicPlayer.tick(ElaraConfig.isOn(Feature.MUSIC_PLAYER)));
         Fault.run("tick.menu", () -> handleMenuKey(client));
+    }
+
+    /** true nếu có hiệu ứng, dao hoặc thế giới nào đang bật, hoặc Tầm đánh PvP. Các mục này cần theo dõi người chơi. */
+    private static boolean playerFxOn() {
+        return anyOn(Feature.Group.EFFECTS) || anyOn(Feature.Group.KNIVES) || anyOn(Feature.Group.WORLD)
+                || ElaraConfig.isOn(Feature.PVP_REACH);
+    }
+
+    private static boolean anyOn(Feature.Group group) {
+        for (Feature f : Feature.inGroup(group)) {
+            if (ElaraConfig.isOn(f)) return true;
+        }
+        return false;
     }
 
     /** Phím Right Shift mở Menu Elara. Mở được cả ở sảnh chính, không cần vào server. */

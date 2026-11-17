@@ -3,6 +3,7 @@ package com.elara.client.ui;
 import com.elara.client.core.Guard;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Feature;
 import com.elara.client.core.LagFix;
 import com.elara.client.fx.KnifeAnim;
@@ -138,7 +139,7 @@ public final class ChatKeyboard {
         } catch (Throwable t) {
             Guard.rethrowIfFatal(t);
             broken = true;
-            System.err.println("[Elara] Tắt Bàn phím chat do lỗi: " + t);
+            Fault.fail("ui.chatkeys", t);
         }
     }
 
@@ -272,7 +273,7 @@ public final class ChatKeyboard {
         } catch (Throwable t) {
             Guard.rethrowIfFatal(t);
             broken = true;
-            System.err.println("[Elara] Tắt Bàn phím chat do lỗi: " + t);
+            Fault.fail("ui.chatkeys", t);
             return true;
         }
     }

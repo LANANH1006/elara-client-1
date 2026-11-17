@@ -70,6 +70,8 @@ public final class Lang {
             e("feature.lyrics_island", "Lời bài hát trên đảo", "Lyrics on the island"),
             e("feature.keystrokes", "Hiển thị phím", "Keystrokes"),
             e("feature.sysinfo", "Thông số hệ thống", "System info"),
+            e("feature.dynamic_island", "Dynamic Island trên đầu", "Dynamic Island on top"),
+            e("desc.dynamic_island", "Thanh nhỏ trên đầu màn hình, kéo thả được", "Small bar at the top, draggable"),
             e("sys.fps", "FPS", "FPS"),
             e("sys.ping", "Ping", "Ping"),
             e("sys.pos", "Tọa độ", "Position"),

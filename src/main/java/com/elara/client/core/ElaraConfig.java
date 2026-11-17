@@ -38,7 +38,7 @@ public final class ElaraConfig {
         public int islandX = -1;        // px, -1 nghĩa là căn giữa
         public String lang = "vi";
         public Map<String, Boolean> toggles = new LinkedHashMap<>();
-        public int toggleVersion = 0;        // 3 = đã đưa mọi tính năng về mặc định nhẹ (chỉ Chat Touch bật)
+        public int toggleVersion = 0;        // 4 = mọi tính năng tắt sẵn, kể cả Chat Touch
         public Map<String, Layout> layouts = new LinkedHashMap<>();
         public int themeAccent = 0xFF0A84FF; // màu chủ đạo của menu (ARGB)
         public int hudVersion = 0;           // 2 = đã áp dụng vị trí HUD mặc định mới
@@ -51,7 +51,7 @@ public final class ElaraConfig {
         public int[] builderOrigin;          // gốc bản vẽ (x, y, z), null nếu chưa đặt
         public int menuTab = 0;              // chỉ số tab đang mở trong Menu Elara
         public int menuScroll = 0;           // vị trí cuộn của tab đó
-        public boolean skinOn = true;        // dùng skin tùy chỉnh trong game
+        public boolean skinOn = false;        // dùng skin tùy chỉnh trong game
         public boolean skinSlim = false;     // kiểu tay mảnh (Slim)
         public String skinName = "";         // tên người chơi của skin đã tải
         public Map<String, Boolean> skinHidden = new LinkedHashMap<>(); // bộ phận đang ẩn
@@ -178,9 +178,9 @@ public final class ElaraConfig {
         dirty = true;
     }
 
-    /** Bật/tắt. Chat Touch mặc định bật, mọi tính năng khác mặc định tắt. */
+    /** Bật/tắt. Mọi tính năng đều mặc định tắt. */
     public static boolean isOn(Feature f) {
-        return data.toggles.getOrDefault(f.name(), f == Feature.CHAT_TOUCH);
+        return data.toggles.getOrDefault(f.name(), false);
     }
 
     public static void toggle(Feature f) {
@@ -295,11 +295,12 @@ public final class ElaraConfig {
         }
         Lang.setCode(data.lang);
         if (data.toggles == null) data.toggles = new LinkedHashMap<>();
-        if (data.toggleVersion < 3) {
-            // Bản này đặt lại mọi tính năng về mặc định nhẹ, một lần duy nhất: chỉ Chat Touch bật sẵn,
-            // còn hiệu ứng 3D, cánh, dao, thế giới, shader và culling đều tắt. Bật lại trong menu Elara nếu cần.
+        if (data.toggleVersion < 4) {
+            // Một lần duy nhất: tắt mọi tính năng (kể cả Chat Touch) và tắt skin tùy chỉnh.
+            // Khi vào game chỉ còn phím Right Shift và nút [Elara]. Bật lại trong menu Elara nếu cần.
             data.toggles.clear();
-            data.toggleVersion = 3;
+            data.skinOn = false;
+            data.toggleVersion = 4;
             dirty = true;
         }
         if (data.hudVersion < 2) {

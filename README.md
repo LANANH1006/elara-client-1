@@ -15,7 +15,7 @@ Mod ID: `elaraclient`. Tác giả: Lan Anh.
 - Nút **Dọn RAM** ở tab Fix Lag, gọi `System.gc()`, có thời gian chờ 15 giây.
 - Restyle màn hình: mixin `ScreenMixin` (nền) và `ButtonWidgetMixin` (nút) để đổi mọi màn hình và nút thành kính mờ bo tròn kiểu iOS. Màn hình chính dùng `title_bg.png`.
 - Splash screen vẽ quả táo cắn dở bằng code (`AppleLogo`), không dùng file ảnh.
-- Obfuscation bằng ProGuard (đổi tên class) chạy sau `remapJar`, ra file `*-obf.jar`.
+- Không còn obfuscation: đã gỡ ProGuard để không làm gãy liên kết Mixin. File phát hành là jar remap chuẩn của Loom.
 - Kiểm tra SHA-256 tên tác giả khi khởi động (`AuthorGuard`). Nếu tên bị sửa, mixin và menu Elara bị tắt.
 
 ## Trước khi build: đặt 2 ảnh
@@ -30,12 +30,13 @@ Thiếu ảnh thì build vẫn chạy, nhưng màn hình chính và icon sẽ hi
 
 Cần JDK 21.
 
-- Có obfuscation: `./gradlew build`. File phát hành là `build/libs/elara-client-0.2.5-obf.jar`.
-- Bỏ obfuscation để debug: `./gradlew build -x obfuscate`.
+- `./gradlew build`. File phát hành là `build/libs/elara-client-0.3.3.jar`, một file duy nhất đã remap.
 
 ## Giới hạn cần biết
 
-- **Obfuscation chỉ đổi tên class.** Tên trường và phương thức được giữ lại để override của Minecraft vẫn chạy. Ai decompile vẫn đọc được logic.
+- **Mã không bị làm khó đọc.** Ai decompile jar vẫn đọc được logic.
+- **Khi mới vào game chỉ có phím Right Shift và nút [Elara].** Mọi tính năng (hiệu ứng, Dynamic Island, skin, Chat Touch) mặc định tắt. Bật từng cái trong menu Elara.
+- **Lỗi ghi vào `config/elara/error.log`.** Tính năng nào lỗi thì bị tắt và stacktrace được ghi vào file đó. Menu Elara hiện dòng đỏ khi phiên đó có lỗi.
 - **Kiểm tra tên tác giả không chống được người quyết tâm.** Họ có thể gỡ đoạn kiểm tra. Đây là lớp làm khó, không phải bảo vệ.
 - **Mixin nhắm vào tên method của Yarn 1.21.4 viết theo trí nhớ.** Các inject đều có `require = 0`, nên method sai tên thì tính năng đó không chạy, game vẫn mở được. Nhưng accessor `ParticleAccessor` (đọc `x`, `y`, `z` của particle) mà sai tên sẽ làm game lỗi lúc khởi động. Nếu gặp, gửi log cho mình.
 - **Restyle chưa được kiểm chứng trên game.** `TitleScreen` có thể override `renderBackground`, khi đó nền sảnh chính sẽ không đổi. Cần test và chỉnh.

@@ -1,6 +1,7 @@
 package com.elara.client.hud;
 
 import com.elara.client.core.ElaraAssets;
+import com.elara.client.core.Fault;
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
 import com.elara.client.fx.CombatFx;
@@ -58,7 +59,7 @@ final class TargetHud {
             drawPanel(ctx, client, t);
         } catch (RuntimeException ex) {
             broken = true;
-            System.err.println("[Elara] Tắt Target HUD do lỗi: " + ex);
+            Fault.fail("hud.target", ex);
         }
     }
 

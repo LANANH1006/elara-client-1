@@ -1,6 +1,7 @@
 package com.elara.client.hud;
 
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Feature;
 import com.elara.client.ui.IosStyle;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -38,6 +39,7 @@ public final class DynamicIslandHud {
 
     public static void render(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
+        if (!ElaraConfig.isOn(Feature.DYNAMIC_ISLAND)) return;
         if (client.options.hudHidden) return;
         draw(ctx, client, box(client));
     }

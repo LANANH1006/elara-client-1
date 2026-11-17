@@ -10,7 +10,7 @@ import java.security.MessageDigest;
  * Chỉ lưu SHA-256 của tên, không lưu chữ "Lan Anh" dạng thuần trong class.
  *
  * Lưu ý: đây là cơ chế làm khó, không phải bảo vệ tuyệt đối. Ai decompile được jar
- * vẫn có thể gỡ đoạn kiểm tra này. Obfuscation chỉ làm việc đó mất thêm thời gian.
+ * vẫn có thể gỡ đoạn kiểm tra này. Jar không bị làm khó đọc, nên kiểm tra này chỉ là lớp chặn thông thường.
  */
 public final class AuthorGuard {
     public static final String MOD_ID = "elaraclient";
