@@ -1,5 +1,6 @@
 package com.elara.client.fx;
 
+import com.elara.client.core.Fault;
 import com.elara.client.core.Guard;
 
 import com.elara.client.core.ElaraConfig;
@@ -223,7 +224,7 @@ public final class Weapon3D {
         } catch (Throwable ex) {
             Guard.rethrowIfFatal(ex);
             broken = true;
-            System.err.println("[Elara] Tắt Vũ khí 3D do lỗi: " + ex);
+            Fault.fail("fx.weapon3d", ex);
             return false;
         } finally {
             m.pop();
@@ -317,7 +318,7 @@ public final class Weapon3D {
         } catch (Throwable ex) {
             Guard.rethrowIfFatal(ex);
             broken = true;
-            System.err.println("[Elara] Tắt Vũ khí 3D ở góc nhìn thứ ba do lỗi: " + ex);
+            Fault.fail("fx.weapon3d", ex);
         }
     }
 

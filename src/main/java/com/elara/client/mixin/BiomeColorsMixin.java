@@ -1,10 +1,10 @@
 package com.elara.client.mixin;
 
-import com.elara.client.core.Gate;
-
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Feature;
+import com.elara.client.core.Gate;
 import net.minecraft.client.color.world.BiomeColors;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.BlockRenderView;
@@ -21,6 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BiomeColors.class)
 public abstract class BiomeColorsMixin {
 
+    private static final String FAULT_KEY = "mixin.watercolor";
     private static final int TURQUOISE_R = 0x30;
     private static final int TURQUOISE_G = 0xD5;
     private static final int TURQUOISE_B = 0xC8;
@@ -31,21 +32,26 @@ public abstract class BiomeColorsMixin {
             at = @At("RETURN"), cancellable = true, require = 0)
     private static void elara$turquoiseWater(BlockRenderView world, BlockPos pos,
                                              CallbackInfoReturnable<Integer> cir) {
-        if (!AuthorGuard.isValid()) return;
-        if (Gate.loading()) return;
-        if (!ElaraConfig.isOn(Feature.LITE_SHADER)) return;
+        if (Fault.off(FAULT_KEY)) return;
+        try {
+            if (!AuthorGuard.isValid()) return;
+            if (Gate.loading()) return;
+            if (!ElaraConfig.isOn(Feature.LITE_SHADER)) return;
 
-        int base = cir.getReturnValue();
-        int br = (base >> 16) & 0xFF;
-        int bg = (base >> 8) & 0xFF;
-        int bb = base & 0xFF;
-        // Lấp lánh: hệ số sáng từ 0.96 đến 1.04, đổi theo tọa độ khối để mặt nước không phẳng màu
-        int h = (pos.getX() * 73856093 ^ pos.getZ() * 19349663) & 0xFF;
-        float shimmer = 0.96f + h / 255f * 0.08f;
-        int r = clamp((br + (TURQUOISE_R - br) * MIX) * shimmer);
-        int g = clamp((bg + (TURQUOISE_G - bg) * MIX) * shimmer);
-        int b = clamp((bb + (TURQUOISE_B - bb) * MIX) * shimmer);
-        cir.setReturnValue((r << 16) | (g << 8) | b);
+            int base = cir.getReturnValue();
+            int br = (base >> 16) & 0xFF;
+            int bg = (base >> 8) & 0xFF;
+            int bb = base & 0xFF;
+            // Lấp lánh: hệ số sáng từ 0.96 đến 1.04, đổi theo tọa độ khối để mặt nước không phẳng màu
+            int h = (pos.getX() * 73856093 ^ pos.getZ() * 19349663) & 0xFF;
+            float shimmer = 0.96f + h / 255f * 0.08f;
+            int r = clamp((br + (TURQUOISE_R - br) * MIX) * shimmer);
+            int g = clamp((bg + (TURQUOISE_G - bg) * MIX) * shimmer);
+            int b = clamp((bb + (TURQUOISE_B - bb) * MIX) * shimmer);
+            cir.setReturnValue((r << 16) | (g << 8) | b);
+        } catch (Throwable t) {
+            Fault.fail(FAULT_KEY, t);
+        }
     }
 
     private static int clamp(float v) {

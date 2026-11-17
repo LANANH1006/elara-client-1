@@ -2,6 +2,7 @@ package com.elara.client.fx;
 
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Guard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -91,7 +92,7 @@ public final class Airplane {
         } catch (Throwable t) {
             Guard.rethrowIfFatal(t);
             broken = true;
-            System.err.println("[Elara] Tắt Biến hình máy bay do lỗi: " + t);
+            Fault.fail("fx.airplane", t);
         }
     }
 

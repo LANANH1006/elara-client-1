@@ -10,11 +10,17 @@ import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
 
+import java.util.Arrays;
+
 /**
- * Gom các tam giác của một lượt vẽ vào một buffer rồi vẽ một lần.
+ * Gom các tam giác của một lượt vẽ rồi vẽ một lần.
+ *
+ * Đỉnh chỉ được ghi vào mảng của chính batch. Tessellator chỉ được đụng tới trong flush(), và flush()
+ * kết thúc buffer ngay trong cùng một lượt. Vì vậy tại mỗi thời điểm chỉ có tối đa một buffer mở trên
+ * Tessellator, và lỗi khi tính hình học không để Tessellator kẹt sang khung sau.
  * Tọa độ truyền vào là tọa độ thế giới, batch tự trừ vị trí camera.
  */
-public final class WorldBatch {
+public final class WorldBatch implements AutoCloseable {
 
     /** Một điểm trong không gian thế giới */
     public record V(double x, double y, double z) {
@@ -28,7 +34,12 @@ public final class WorldBatch {
     private final double cy;
     private final double cz;
     private final boolean additive;
-    private BufferBuilder buf;
+    /** Vị trí đỉnh đã trừ camera, 3 float mỗi đỉnh */
+    private float[] pos = new float[3 * 96];
+    /** Màu ARGB của từng đỉnh */
+    private int[] col = new int[96];
+    /** Số đỉnh đã gom */
+    private int n;
 
     public WorldBatch(Matrix4f matrix, double cx, double cy, double cz, boolean additive) {
         this.matrix = matrix;
@@ -38,16 +49,17 @@ public final class WorldBatch {
         this.additive = additive;
     }
 
-    private BufferBuilder buffer() {
-        if (buf == null) {
-            buf = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        }
-        return buf;
-    }
-
     private void vertex(V p, int argb) {
-        buffer().vertex(matrix, (float) (p.x() - cx), (float) (p.y() - cy), (float) (p.z() - cz))
-                .color((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, (argb >>> 24) & 0xFF);
+        if (n == col.length) {
+            int cap = col.length * 2;
+            pos = Arrays.copyOf(pos, cap * 3);
+            col = Arrays.copyOf(col, cap);
+        }
+        pos[3 * n] = (float) (p.x() - cx);
+        pos[3 * n + 1] = (float) (p.y() - cy);
+        pos[3 * n + 2] = (float) (p.z() - cz);
+        col[n] = argb;
+        n++;
     }
 
     public void tri(V a, V b, V c, int argb) {
@@ -135,21 +147,47 @@ public final class WorldBatch {
                 a.x() * b.y() - a.y() * b.x());
     }
 
-    /** Vẽ toàn bộ tam giác đã gom. Không có gì để vẽ thì bỏ qua. */
+    /**
+     * Dựng buffer từ các đỉnh đã gom, vẽ một lần, rồi kết thúc buffer ngay trong lượt này.
+     * Không có gì để vẽ thì bỏ qua. Sau lượt này batch trống, có thể gom tiếp.
+     */
     public void flush() {
-        if (buf == null) return;
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.enableBlend();
-        if (additive) {
-            RenderSystem.blendFunc(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
-        } else {
+        if (n == 0) return;
+        int count = n;
+        n = 0;
+        BufferBuilder b = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        try {
+            for (int i = 0; i < count; i++) {
+                int argb = col[i];
+                b.vertex(matrix, pos[3 * i], pos[3 * i + 1], pos[3 * i + 2])
+                        .color((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, (argb >>> 24) & 0xFF);
+            }
+        } catch (RuntimeException e) {
+            // Kết thúc buffer dở để Tessellator không kẹt; dữ liệu dở bỏ đi
+            b.end();
+            throw e;
+        }
+        var built = b.end();
+        try {
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+            RenderSystem.enableBlend();
+            if (additive) {
+                RenderSystem.blendFunc(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
+            } else {
+                RenderSystem.defaultBlendFunc();
+            }
+            RenderSystem.disableCull();
+            RenderSystem.enableDepthTest();
+            BufferRenderer.drawWithGlobalProgram(built);
+        } finally {
+            RenderSystem.enableCull();
             RenderSystem.defaultBlendFunc();
         }
-        RenderSystem.disableCull();
-        RenderSystem.enableDepthTest();
-        BufferRenderer.drawWithGlobalProgram(buf.end());
-        RenderSystem.enableCull();
-        RenderSystem.defaultBlendFunc();
-        buf = null;
+    }
+
+    /** Đóng batch: vẽ nốt phần đã gom. Dùng với try-with-resources để luôn kết thúc, kể cả khi lỗi. */
+    @Override
+    public void close() {
+        flush();
     }
 }

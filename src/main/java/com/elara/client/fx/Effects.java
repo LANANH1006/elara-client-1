@@ -1,9 +1,8 @@
 package com.elara.client.fx;
 
-import com.elara.client.core.Guard;
-
 import com.elara.client.core.ElaraConfig;
 import com.elara.client.core.Feature;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Warmup;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
@@ -11,148 +10,100 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
+import java.util.function.Consumer;
+
 /**
  * Điểm vào vẽ hiệu ứng trong thế giới. Mỗi tính năng bật thì vẽ một lượt riêng.
- * Mỗi lớp nằm trong try/catch riêng: một lớp lỗi trên GL của điện thoại thì tắt lớp đó và báo một lần,
- * các lớp khác và game vẫn chạy.
+ *
+ * Mỗi tính năng nằm trong Fault riêng: một tính năng lỗi thì tắt đúng tính năng đó và ghi một lần,
+ * các tính năng còn lại vẫn vẽ. Batch được đóng bằng try-with-resources nên luôn được vẽ hoặc bỏ đi
+ * trọn vẹn, không để dữ liệu dở dang.
  */
 public final class Effects {
-
-    /** Hiệu ứng đã lỗi một lần thì tắt tới khi khởi động lại, để không báo lỗi mỗi khung hình */
-    private static final java.util.Set<Feature> BROKEN = java.util.EnumSet.noneOf(Feature.class);
-    private static boolean wingsBroken;
-    private static boolean combatBroken;
-    private static boolean shadowBroken;
 
     private Effects() {}
 
     public static void render(WorldRenderContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null || client.player == null) return;
+        // Đang mở túi đồ hoặc rương: tạm dừng toàn bộ hiệu ứng thế giới để đỡ tụt FPS
+        if (client.currentScreen instanceof HandledScreen<?>) return;
 
         Vec3d cam = ctx.camera().getPos();
         Matrix4f m = ctx.matrixStack().peek().getPositionMatrix();
         float a = PlayerTracker.alpha();
         // Sau khi vào map, vài tick đầu tạm dừng các hiệu ứng nặng (xem Warmup)
-        // Đang mở túi đồ hoặc rương: tạm dừng toàn bộ hiệu ứng thế giới của Elara để đỡ tụt FPS
-        if (client.currentScreen instanceof HandledScreen<?>) return;
         boolean heavy = Warmup.heavy();
+        WorldBatch.V camV = new WorldBatch.V(cam.x, cam.y, cam.z);
 
         if (ElaraConfig.isOn(Feature.JUMP_RING)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
-            JumpRings.draw(b, client, ElaraConfig.layout(Feature.JUMP_RING), ElaraConfig.color(Feature.JUMP_RING));
-            b.flush();
+            batch("fx.jump", m, cam, false, b -> JumpRings.draw(b, client,
+                    ElaraConfig.layout(Feature.JUMP_RING), ElaraConfig.color(Feature.JUMP_RING)));
         }
         if (ElaraConfig.isOn(Feature.FOOTSTEP_AURA)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            Footsteps.draw(b, client, ElaraConfig.layout(Feature.FOOTSTEP_AURA),
-                    ElaraConfig.color(Feature.FOOTSTEP_AURA));
-            b.flush();
+            batch("fx.footstep", m, cam, true, b -> Footsteps.draw(b, client,
+                    ElaraConfig.layout(Feature.FOOTSTEP_AURA), ElaraConfig.color(Feature.FOOTSTEP_AURA)));
         }
         if (ElaraConfig.isOn(Feature.HEAD_ACCESSORY)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            Halo.draw(b, client, ElaraConfig.layout(Feature.HEAD_ACCESSORY),
-                    ElaraConfig.color(Feature.HEAD_ACCESSORY), a, new WorldBatch.V(cam.x, cam.y, cam.z));
-            b.flush();
+            batch("fx.halo", m, cam, true, b -> Halo.draw(b, client,
+                    ElaraConfig.layout(Feature.HEAD_ACCESSORY), ElaraConfig.color(Feature.HEAD_ACCESSORY),
+                    a, new WorldBatch.V(cam.x, cam.y, cam.z)));
         }
         if (ElaraConfig.isOn(Feature.SWORD_TRAIL)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            SwordTrail.draw(b, client, ElaraConfig.layout(Feature.SWORD_TRAIL),
-                    ElaraConfig.color(Feature.SWORD_TRAIL));
-            b.flush();
+            batch("fx.sword", m, cam, true, b -> SwordTrail.draw(b, client,
+                    ElaraConfig.layout(Feature.SWORD_TRAIL), ElaraConfig.color(Feature.SWORD_TRAIL)));
         }
-        WorldBatch.V camV = new WorldBatch.V(cam.x, cam.y, cam.z);
         if (ElaraConfig.isOn(Feature.PVP_REACH)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
-            Reach.draw(b, client, ElaraConfig.color(Feature.PVP_REACH), a);
-            b.flush();
+            batch("fx.reach", m, cam, false, b -> Reach.draw(b, client, ElaraConfig.color(Feature.PVP_REACH), a));
         }
         if (ElaraConfig.isOn(Feature.RAIN_3D)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
-            Rain.draw(b, camV, ElaraConfig.layout(Feature.RAIN_3D), ElaraConfig.color(Feature.RAIN_3D));
-            b.flush();
+            batch("fx.rain", m, cam, false, b -> Rain.draw(b, camV,
+                    ElaraConfig.layout(Feature.RAIN_3D), ElaraConfig.color(Feature.RAIN_3D)));
         }
         if (ElaraConfig.isOn(Feature.HIT_EFFECT)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            HitFx.draw(b, camV, ElaraConfig.layout(Feature.HIT_EFFECT), ElaraConfig.color(Feature.HIT_EFFECT));
-            b.flush();
+            batch("fx.hit", m, cam, true, b -> HitFx.draw(b, camV,
+                    ElaraConfig.layout(Feature.HIT_EFFECT), ElaraConfig.color(Feature.HIT_EFFECT)));
         }
-        if (heavy && ElaraConfig.isOn(Feature.VIRTUAL_WINGS) && !wingsBroken) {
-            // Cánh tự tạo batch riêng: WorldBatch cho khung dây và khói, TexBatch cho lông vũ có texture
-            try {
-                Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
-                        ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV);
-            } catch (Throwable ex) {
-                Guard.rethrowIfFatal(ex);
-                wingsBroken = true;
-                System.err.println("[Elara] Tắt Cánh do lỗi: " + ex);
-            }
+        if (heavy && ElaraConfig.isOn(Feature.VIRTUAL_WINGS)) {
+            Fault.run("fx.wings", () -> Wings.draw(m, client, ElaraConfig.layout(Feature.VIRTUAL_WINGS),
+                    ElaraConfig.color(Feature.VIRTUAL_WINGS), a, camV));
         }
-        // Thế giới sống động: bầu trời, gợn sóng mưa, hạt môi trường, Mist/Glass/Bokeh (có try/catch riêng)
-        if (heavy) WorldFx.draw(m, camV, client);
+        // Thế giới sống động: bầu trời, gợn sóng mưa, hạt môi trường, Mist/Glass/Bokeh
+        if (heavy) Fault.run("fx.world", () -> WorldFx.draw(m, camV, client));
         // Bóng mềm dưới chân: đĩa tròn mờ, mờ dần khi nhảy
-        if (heavy && SoftShadow.enabled() && !shadowBroken) {
-            try {
-                SoftShadow.draw(m, camV);
-            } catch (Throwable ex) {
-                Guard.rethrowIfFatal(ex);
-                shadowBroken = true;
-                System.err.println("[Elara] Tắt Bóng mềm do lỗi: " + ex);
-            }
+        if (heavy && SoftShadow.enabled()) Fault.run("fx.shadow", () -> SoftShadow.draw(m, camV));
+        // Hiệu ứng PvP: sóng đánh trúng, tàn quang, sóng xung kích, phá khiên
+        if (heavy) Fault.run("fx.combat", () -> CombatFx.draw(m, camV));
+        if (ElaraConfig.isOn(Feature.CAPE)) {
+            batch("fx.cape", m, cam, false, b -> Cape.draw(b, client,
+                    ElaraConfig.layout(Feature.CAPE), ElaraConfig.color(Feature.CAPE), a));
         }
-        // Hiệu ứng PvP: sóng đánh trúng, tàn quang, sóng xung kích, phá khiên (tự tạo batch riêng)
-        if (heavy && !combatBroken) {
-            try {
-                CombatFx.draw(m, camV);
-            } catch (Throwable ex) {
-                Guard.rethrowIfFatal(ex);
-                combatBroken = true;
-                System.err.println("[Elara] Tắt Hiệu ứng PvP do lỗi: " + ex);
-            }
+        if (ElaraConfig.isOn(Feature.BODY_GLOW)) {
+            batch("fx.bodyglow", m, cam, true, b -> BodyGlow.draw(b, client,
+                    ElaraConfig.layout(Feature.BODY_GLOW), ElaraConfig.color(Feature.BODY_GLOW), a));
         }
-        if (ElaraConfig.isOn(Feature.CAPE) && !BROKEN.contains(Feature.CAPE)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
-            try {
-                Cape.draw(b, client, ElaraConfig.layout(Feature.CAPE), ElaraConfig.color(Feature.CAPE), a);
-            } catch (Throwable ex) {
-                Guard.rethrowIfFatal(ex);
-                // Lỗi trong một hiệu ứng không được làm sập game. Tắt riêng hiệu ứng này và báo một lần.
-                System.err.println("[Elara] Tắt Áo choàng do lỗi: " + ex);
-                BROKEN.add(Feature.CAPE);
-            }
-            b.flush();
-        }
-        if (ElaraConfig.isOn(Feature.BODY_GLOW) && !BROKEN.contains(Feature.BODY_GLOW)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            try {
-                BodyGlow.draw(b, client, ElaraConfig.layout(Feature.BODY_GLOW),
-                        ElaraConfig.color(Feature.BODY_GLOW), a);
-            } catch (Throwable ex) {
-                Guard.rethrowIfFatal(ex);
-                System.err.println("[Elara] Tắt Viền sáng thân do lỗi: " + ex);
-                BROKEN.add(Feature.BODY_GLOW);
-            }
-            b.flush();
-        }
-        if (ElaraConfig.isOn(Feature.RIBBON_TRAIL) && !BROKEN.contains(Feature.RIBBON_TRAIL)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, true);
-            try {
-                RibbonTrail.draw(b, client, ElaraConfig.layout(Feature.RIBBON_TRAIL),
-                        ElaraConfig.color(Feature.RIBBON_TRAIL), a, new WorldBatch.V(cam.x, cam.y, cam.z));
-            } catch (Throwable ex) {
-                Guard.rethrowIfFatal(ex);
-                System.err.println("[Elara] Tắt Dải lụa sau lưng do lỗi: " + ex);
-                BROKEN.add(Feature.RIBBON_TRAIL);
-            }
-            b.flush();
+        if (ElaraConfig.isOn(Feature.RIBBON_TRAIL)) {
+            batch("fx.ribbon", m, cam, true, b -> RibbonTrail.draw(b, client,
+                    ElaraConfig.layout(Feature.RIBBON_TRAIL), ElaraConfig.color(Feature.RIBBON_TRAIL),
+                    a, new WorldBatch.V(cam.x, cam.y, cam.z)));
         }
         if (ElaraConfig.isOn(Feature.BUILD_GUIDE)) {
-            WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, false);
-            BuildGuide.draw(b);
-            b.flush();
+            batch("fx.buildguide", m, cam, false, b -> BuildGuide.draw(b));
+        }
+        // Biến hình máy bay: chỉ khi bật và đang ở trạng thái cho phép
+        if (heavy && ElaraConfig.isOn(Feature.AIRPLANE_MORPH)) {
+            Fault.run("fx.airplane", () -> Airplane.draw(m, client, camV, a));
         }
         // Vũ khí 3D ở góc nhìn thứ ba: chỉ vẽ khi mixin đã đánh dấu người chơi local trong lượt này
-        if (heavy && ElaraConfig.isOn(Feature.AIRPLANE_MORPH)) Airplane.draw(m, client, camV, a);
-        if (heavy) Weapon3D.drawThirdPersonIfMarked(cam);
+        if (heavy) Fault.run("fx.weapon3d", () -> Weapon3D.drawThirdPersonIfMarked(cam));
+    }
+
+    /** Một lượt vẽ bằng WorldBatch. Batch luôn được đóng để vẽ hoặc bỏ đi trọn vẹn, kể cả khi lỗi. */
+    private static void batch(String key, Matrix4f m, Vec3d cam, boolean additive, Consumer<WorldBatch> draw) {
+        Fault.run(key, () -> {
+            try (WorldBatch b = new WorldBatch(m, cam.x, cam.y, cam.z, additive)) {
+                draw.accept(b);
+            }
+        });
     }
 }

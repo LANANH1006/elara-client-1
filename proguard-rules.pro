@@ -10,6 +10,8 @@
 # Điểm vào Fabric và các class mixin phải giữ tên, nếu không game sẽ không tìm thấy
 -keep class com.elara.client.ElaraClient { *; }
 -keep class com.elara.client.mixin.** { *; }
+# Entrypoint Mod Menu khai báo trong fabric.mod.json bằng tên class: phải giữ tên, nếu không Mod Menu không tìm thấy
+-keep class com.elara.client.compat.** { *; }
 
 # Gson đọc theo tên trường; enum dùng tên trong file config
 -keep class com.elara.client.core.ElaraConfig$Data { *; }

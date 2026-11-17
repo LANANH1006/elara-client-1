@@ -474,7 +474,8 @@ public final class MusicPlayer {
      */
     public static void tick(boolean enabled) {
         if (!enabled) {
-            pause();
+            // Chỉ tạm dừng khi đang phát, để không gọi OpenAL mỗi tick khi tính năng đang tắt
+            if (playing) pause();
             return;
         }
         Decoded d = ready;
@@ -539,6 +540,7 @@ public final class MusicPlayer {
         if (alBroken) return false;
         if (alReady) return true;
         try {
+            drainAlErrors();
             source = AL10.alGenSources();
             checkAl("alGenSources");
             for (int i = 0; i < BUFFERS; i++) freeBuffers.add(AL10.alGenBuffers());
@@ -551,6 +553,17 @@ public final class MusicPlayer {
             alBroken = true;
             System.err.println("[Elara] Không mở được OpenAL cho nhạc: " + t);
             return false;
+        }
+    }
+
+    /**
+     * Xóa lỗi OpenAL còn sót từ Minecraft trước khi tạo nguồn. Nếu không xóa, checkAl sẽ đọc nhầm lỗi cũ
+     * và đánh dấu OpenAL hỏng vĩnh viễn, nhạc không bao giờ phát.
+     */
+    private static void drainAlErrors() {
+        int left = 8;
+        while (left-- > 0 && AL10.alGetError() != AL10.AL_NO_ERROR) {
+            System.err.println("[Elara] Xóa lỗi OpenAL cũ trước khi mở nhạc");
         }
     }
 

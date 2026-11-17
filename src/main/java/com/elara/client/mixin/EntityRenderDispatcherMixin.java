@@ -1,9 +1,9 @@
 package com.elara.client.mixin;
 
-import com.elara.client.core.Gate;
-
 import com.elara.client.core.AuthorGuard;
 import com.elara.client.core.CullingManager;
+import com.elara.client.core.Fault;
+import com.elara.client.core.Gate;
 import com.elara.client.fx.Airplane;
 import com.elara.client.fx.Weapon3D;
 import net.minecraft.client.MinecraftClient;
@@ -22,26 +22,32 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(EntityRenderDispatcher.class)
 public abstract class EntityRenderDispatcherMixin {
 
+    private static final String FAULT_KEY = "mixin.entitycull";
+
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true, require = 0)
     private void elara$cullEntity(Entity entity, Frustum frustum, double x, double y, double z,
                                   CallbackInfoReturnable<Boolean> cir) {
-        if (!AuthorGuard.isValid()) return;
+        if (Fault.off(FAULT_KEY)) return;
+        try {
+            if (!AuthorGuard.isValid()) return;
+            if (Gate.loading()) return;
+            // Chưa vào thế giới thì không có thực thể để lọc: thoát sớm
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client == null || client.world == null) {
+                Weapon3D.setRenderingLocal(false);
+                return;
+            }
+            Weapon3D.setRenderingLocal(entity == client.player);
 
-        if (Gate.loading()) return;
-        // Chưa vào thế giới thì không có thực thể để lọc: thoát sớm
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.world == null) {
-            Weapon3D.setRenderingLocal(false);
-            return;
-        }
-        Weapon3D.setRenderingLocal(entity == client.player);
-
-        if (Airplane.hidesBody(entity)) {
-            cir.setReturnValue(false);
-            return;
-        }
-        if (!CullingManager.keepEntity(entity)) {
-            cir.setReturnValue(false);
+            if (Airplane.hidesBody(entity)) {
+                cir.setReturnValue(false);
+                return;
+            }
+            if (!CullingManager.keepEntity(entity)) {
+                cir.setReturnValue(false);
+            }
+        } catch (Throwable t) {
+            Fault.fail(FAULT_KEY, t);
         }
     }
 }

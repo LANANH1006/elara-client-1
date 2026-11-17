@@ -1,9 +1,9 @@
 package com.elara.client.mixin;
 
-import com.elara.client.core.Gate;
-
 import com.elara.client.core.ElaraConfig;
+import com.elara.client.core.Fault;
 import com.elara.client.core.Feature;
+import com.elara.client.core.Gate;
 import com.elara.client.fx.Weapon3D;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.feature.HeldItemFeatureRenderer;
@@ -24,6 +24,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(HeldItemFeatureRenderer.class)
 public abstract class HeldItemFeatureRendererMixin {
 
+    private static final String FAULT_KEY = "mixin.thirdperson";
+
     @Inject(
             method = "render(Lnet/minecraft/client/util/math/MatrixStack;"
                     + "Lnet/minecraft/client/render/VertexConsumerProvider;"
@@ -33,12 +35,17 @@ public abstract class HeldItemFeatureRendererMixin {
             require = 0
     )
     private void elara$thirdPersonWeapon(MatrixStack matrices, CallbackInfo ci) {
-        if (Gate.loading()) return;
-        if (!ElaraConfig.isOn(Feature.WEAPON_3D)) return;
-        if (!Weapon3D.isRenderingLocalPlayer()) return;
-        if (Weapon3D.replacesThirdPerson(MinecraftClient.getInstance(), matrices)) {
-            Weapon3D.markThirdPerson();
-            ci.cancel();
+        if (Fault.off(FAULT_KEY)) return;
+        try {
+            if (Gate.loading()) return;
+            if (!ElaraConfig.isOn(Feature.WEAPON_3D)) return;
+            if (!Weapon3D.isRenderingLocalPlayer()) return;
+            if (Weapon3D.replacesThirdPerson(MinecraftClient.getInstance(), matrices)) {
+                Weapon3D.markThirdPerson();
+                ci.cancel();
+            }
+        } catch (Throwable t) {
+            Fault.fail(FAULT_KEY, t);
         }
     }
 }
