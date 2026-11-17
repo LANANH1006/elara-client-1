@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        // Kiểm tra lại phiên bản Loom ở fabricmc.net/develop nếu build báo lỗi plugin
+        id 'fabric-loom' version '1.9-SNAPSHOT'
+    }
+}
+
+rootProject.name = 'elara-client'

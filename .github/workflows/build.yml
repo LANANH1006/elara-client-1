@@ -20,9 +20,9 @@ jobs:
           DIR=$(dirname "$(find . -name build.gradle -not -path '*/build/*' | head -n 1)")
           echo "PROJECT_DIR=$DIR" >> "$GITHUB_ENV"
 
-      - name: Tạo Gradle wrapper 8.10
+      - name: Tạo Gradle wrapper 8.12
         working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle wrapper --gradle-version 8.10
+        run: gradle wrapper --gradle-version 8.12
 
       - name: Build
         working-directory: ${{ env.PROJECT_DIR }}
@@ -30,7 +30,22 @@ jobs:
           chmod +x gradlew
           ./gradlew build
 
+      - name: Chỉ giữ đúng một file .jar đã remap
+        working-directory: ${{ env.PROJECT_DIR }}/build/libs
+        run: |
+          # Bỏ jar phụ nếu Loom hoặc Gradle có tạo (-dev, -sources, -obf)
+          rm -f ./*-dev.jar ./*-sources.jar ./*-obf.jar
+          echo "File còn lại trong build/libs:"
+          ls -la
+          COUNT=$(ls ./*.jar 2>/dev/null | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "Cần đúng 1 file .jar nhưng có $COUNT"
+            exit 1
+          fi
+          echo "Jar phát hành: $(ls ./*.jar)"
+
       - uses: actions/upload-artifact@v4
         with:
           name: elara-client
           path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
+          if-no-files-found: error

@@ -1,0 +1,45 @@
+plugins {
+    id 'fabric-loom'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    // Mod Menu: chỉ dùng lúc biên dịch để viết API. Không đóng gói vào jar.
+    maven { url = "https://maven.terraformersmc.com/releases/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modCompileOnly "com.terraformersmc:modmenu:13.0.3"
+
+    // Bộ giải mã mp3 và ogg cho trình phát nhạc, đóng gói sẵn trong jar (jar-in-jar)
+    include "com.googlecode.soundlibs:mp3spi:1.9.5.4"
+    include "com.googlecode.soundlibs:vorbisspi:1.0.3.3"
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release = 21
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
